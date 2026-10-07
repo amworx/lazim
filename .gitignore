@@ -3,3 +3,13 @@ dist
 *.tsbuildinfo
 .env.local
 .env.*.local
+
+# Android/TWA build artifacts (local only)
+.gradle/
+build/
+app/build/
+android.keystore
+*.idsig
+lazim-v*.apk
+store_icon.png
+manifest-checksum.txt
