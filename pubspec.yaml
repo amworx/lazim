@@ -2,7 +2,7 @@ name: lazim
 description: "Lazim â€” a shared family needs list. One portal for everything the home needs."
 publish_to: 'none'
 
-version: 1.0.0+1
+version: 3.0.0+3
 
 environment:
   sdk: ^3.13.5
