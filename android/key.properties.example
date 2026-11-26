@@ -1,0 +1,7 @@
+# Copy to android/key.properties and fill in your own signing key.
+# This file is committed as a template; the real key.properties and the
+# keystore are gitignored and must never be published to a public repo.
+storeFile=your-release-key.keystore
+storePassword=CHANGE_ME
+keyAlias=your-alias
+keyPassword=CHANGE_ME

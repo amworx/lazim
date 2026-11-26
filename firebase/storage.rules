@@ -1,0 +1,30 @@
+rules_version = '2';
+
+// Lazim — Cloud Storage rules.
+// Attachments live under families/{familyId}/needs/{needId}/...
+// Only members of that family may read or write them.
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isMember(familyId) {
+      return isSignedIn()
+        && firestore.exists(/databases/(default)/documents/families/$(familyId)/members/$(request.auth.uid));
+    }
+
+    match /families/{familyId}/needs/{needId}/{fileName} {
+      allow read: if isMember(familyId);
+      allow write: if isMember(familyId)
+        && request.resource.size < 25 * 1024 * 1024
+        && request.resource.contentType.matches('image/.*|application/pdf|application/.*word.*|text/.*|application/.*sheet.*');
+      allow delete: if isMember(familyId);
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

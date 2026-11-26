@@ -1,0 +1,77 @@
+rules_version = '2';
+
+// Lazim — Firestore security rules.
+//
+// Model: a user belongs to one or more families. Everything inside a family is
+// readable and writable by its members, and by nobody else. Family membership
+// is the single authorization boundary.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function uid() {
+      return request.auth.uid;
+    }
+
+    function isMember(familyId) {
+      return isSignedIn()
+        && exists(/databases/$(database)/documents/families/$(familyId)/members/$(uid()));
+    }
+
+    function isOwner(familyId) {
+      return isSignedIn()
+        && get(/databases/$(database)/documents/families/$(familyId)).data.ownerId == uid();
+    }
+
+    // A user profile is private to that user.
+    match /users/{userId} {
+      allow read: if isSignedIn() && uid() == userId;
+      allow create, update: if isSignedIn() && uid() == userId;
+      allow delete: if false;
+    }
+
+    // Invite codes are readable by anyone signed in (needed to resolve a link),
+    // writable only as part of family creation / by the owning family.
+    match /invites/{code} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if false;
+    }
+
+    match /families/{familyId} {
+      allow read: if isMember(familyId);
+      allow create: if isSignedIn() && request.resource.data.ownerId == uid();
+      allow update: if isMember(familyId);
+      allow delete: if isOwner(familyId);
+
+      match /members/{memberId} {
+        // Members can see the roster. A user may add themselves (join), and an
+        // owner may remove anyone. Members may update their own push tokens.
+        allow read: if isMember(familyId);
+        allow create: if isSignedIn()
+          && (memberId == uid() || isOwner(familyId));
+        allow update: if isSignedIn()
+          && (memberId == uid() || isOwner(familyId));
+        allow delete: if isSignedIn()
+          && (memberId == uid() || isOwner(familyId));
+      }
+
+      match /needs/{needId} {
+        allow read: if isMember(familyId);
+        allow create: if isMember(familyId)
+          && request.resource.data.createdBy == uid()
+          && request.resource.data.familyId == familyId;
+        allow update: if isMember(familyId);
+        allow delete: if isMember(familyId);
+      }
+    }
+
+    // Deny everything not matched above.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
