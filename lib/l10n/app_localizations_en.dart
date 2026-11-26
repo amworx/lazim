@@ -531,4 +531,69 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get quickAddHint => 'Add an item…';
+
+  @override
+  String get searchHint => 'Search items…';
+
+  @override
+  String get searchClear => 'Clear search';
+
+  @override
+  String get noSearchResults => 'No matching items';
+
+  @override
+  String get selectMode => 'Select';
+
+  @override
+  String selectedCount(int count) {
+    return '$count selected';
+  }
+
+  @override
+  String get selectAll => 'Select all';
+
+  @override
+  String get clearSelection => 'Clear selection';
+
+  @override
+  String get bulkMarkDone => 'Mark done';
+
+  @override
+  String get bulkDelete => 'Delete';
+
+  @override
+  String get bulkCancel => 'Cancel';
+
+  @override
+  String bulkDeleteConfirm(int count) {
+    return 'Delete $count items?';
+  }
+
+  @override
+  String get swipeShare => 'Share';
+
+  @override
+  String get swipeDelete => 'Delete';
+
+  @override
+  String get itemShared => 'Item shared';
+
+  @override
+  String get editName => 'Edit name';
+
+  @override
+  String get editNameTitle => 'Display name';
+
+  @override
+  String get editNameHint => 'The name your family sees';
+
+  @override
+  String get nameSaved => 'Name saved';
+
+  @override
+  String get attachmentUploadFailed =>
+      'Could not upload the file. Check that Firebase Storage is enabled.';
+
+  @override
+  String get attachmentOpenFailed => 'Could not open the file.';
 }

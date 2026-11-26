@@ -17,6 +17,80 @@ import '../widgets/update_section.dart';
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
+  /// Shows a dialog to change the user's display name. The name is stored in
+  /// Firestore and Firebase Auth, so it survives a restart and is what family
+  /// members see, instead of whatever Google had on the account.
+  static Future<void> showEditNameDialog(BuildContext context, WidgetRef ref) async {
+    final l = AppL10n.of(context);
+    final user = ref.read(authStateProvider).value;
+    if (user == null) return;
+    final controller = TextEditingController(text: user.displayName);
+    final formKey = GlobalKey<FormState>();
+    var saving = false;
+
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setState) => AlertDialog(
+          title: Text(l.editNameTitle),
+          content: Form(
+            key: formKey,
+            child: TextFormField(
+              controller: controller,
+              autofocus: true,
+              maxLength: 40,
+              decoration: InputDecoration(
+                labelText: l.editNameHint,
+                prefixIcon: const Icon(Icons.person_outline_rounded),
+              ),
+              validator: (v) => (v == null || v.trim().isEmpty) ? l.requiredField : null,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: saving ? null : () => Navigator.pop(ctx, false),
+              child: Text(l.cancel),
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(minimumSize: const Size(80, 44)),
+              onPressed: saving
+                  ? null
+                  : () async {
+                      if (!formKey.currentState!.validate()) return;
+                      setState(() => saving = true);
+                      try {
+                        await ref
+                            .read(authRepositoryProvider)
+                            .updateDisplayName(controller.text.trim());
+                        if (ctx.mounted) Navigator.pop(ctx, true);
+                      } catch (_) {
+                        if (ctx.mounted) {
+                          setState(() => saving = false);
+                          ScaffoldMessenger.of(ctx).showSnackBar(
+                            SnackBar(content: Text(l.errorGeneric)),
+                          );
+                        }
+                      }
+                    },
+              child: saving
+                  ? const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Text(l.save),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (saved == true && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l.nameSaved)),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final l = AppL10n.of(context);
@@ -65,6 +139,12 @@ class SettingsScreen extends ConsumerWidget {
                           ),
                       ],
                     ),
+                  ),
+                  IconButton(
+                    onPressed: () => showEditNameDialog(context, ref),
+                    icon: const Icon(Icons.edit_outlined, size: 20),
+                    tooltip: l.editName,
+                    visualDensity: VisualDensity.compact,
                   ),
                 ],
               ),

@@ -1050,6 +1050,126 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'Add an item…'**
   String get quickAddHint;
+
+  /// No description provided for @searchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search items…'**
+  String get searchHint;
+
+  /// No description provided for @searchClear.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear search'**
+  String get searchClear;
+
+  /// No description provided for @noSearchResults.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching items'**
+  String get noSearchResults;
+
+  /// No description provided for @selectMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Select'**
+  String get selectMode;
+
+  /// No description provided for @selectedCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} selected'**
+  String selectedCount(int count);
+
+  /// No description provided for @selectAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Select all'**
+  String get selectAll;
+
+  /// No description provided for @clearSelection.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear selection'**
+  String get clearSelection;
+
+  /// No description provided for @bulkMarkDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark done'**
+  String get bulkMarkDone;
+
+  /// No description provided for @bulkDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get bulkDelete;
+
+  /// No description provided for @bulkCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get bulkCancel;
+
+  /// No description provided for @bulkDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete {count} items?'**
+  String bulkDeleteConfirm(int count);
+
+  /// No description provided for @swipeShare.
+  ///
+  /// In en, this message translates to:
+  /// **'Share'**
+  String get swipeShare;
+
+  /// No description provided for @swipeDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get swipeDelete;
+
+  /// No description provided for @itemShared.
+  ///
+  /// In en, this message translates to:
+  /// **'Item shared'**
+  String get itemShared;
+
+  /// No description provided for @editName.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit name'**
+  String get editName;
+
+  /// No description provided for @editNameTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Display name'**
+  String get editNameTitle;
+
+  /// No description provided for @editNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'The name your family sees'**
+  String get editNameHint;
+
+  /// No description provided for @nameSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Name saved'**
+  String get nameSaved;
+
+  /// No description provided for @attachmentUploadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not upload the file. Check that Firebase Storage is enabled.'**
+  String get attachmentUploadFailed;
+
+  /// No description provided for @attachmentOpenFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open the file.'**
+  String get attachmentOpenFailed;
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

@@ -526,4 +526,69 @@ class AppL10nAr extends AppL10n {
 
   @override
   String get quickAddHint => 'أضف صنفاً…';
+
+  @override
+  String get searchHint => 'ابحث في الأصناف…';
+
+  @override
+  String get searchClear => 'مسح البحث';
+
+  @override
+  String get noSearchResults => 'لا توجد أصناف مطابقة';
+
+  @override
+  String get selectMode => 'تحديد';
+
+  @override
+  String selectedCount(int count) {
+    return '$count محدد';
+  }
+
+  @override
+  String get selectAll => 'تحديد الكل';
+
+  @override
+  String get clearSelection => 'إلغاء التحديد';
+
+  @override
+  String get bulkMarkDone => 'تم الشراء';
+
+  @override
+  String get bulkDelete => 'حذف';
+
+  @override
+  String get bulkCancel => 'إلغاء';
+
+  @override
+  String bulkDeleteConfirm(int count) {
+    return 'حذف $count من الأصناف؟';
+  }
+
+  @override
+  String get swipeShare => 'مشاركة';
+
+  @override
+  String get swipeDelete => 'حذف';
+
+  @override
+  String get itemShared => 'تمت مشاركة الصنف';
+
+  @override
+  String get editName => 'تعديل الاسم';
+
+  @override
+  String get editNameTitle => 'الاسم المعروض';
+
+  @override
+  String get editNameHint => 'الاسم الذي يراه أفراد العائلة';
+
+  @override
+  String get nameSaved => 'تم حفظ الاسم';
+
+  @override
+  String get attachmentUploadFailed =>
+      'تعذّر رفع الملف. تأكد من تفعيل مساحة التخزين في Firebase.';
+
+  @override
+  String get attachmentOpenFailed => 'تعذّر فتح الملف.';
 }

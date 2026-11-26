@@ -39,13 +39,13 @@ class AppConfig {
 
   /// HTTPS URL of the update manifest JSON.
   ///
-  /// Empty by default, which disables update checks entirely: a fresh clone
-  /// with no hosting set up should not sit there failing a network call on every
-  /// launch. Point it at a static file when you have somewhere to publish
-  /// builds, e.g. `--dart-define=LAZIM_UPDATE_MANIFEST=https://yourhost/update.json`.
+  /// Defaults to the manifest published on this project's GitHub Pages site,
+  /// so sideloaded builds can find new versions without a build-time flag.
+  /// Override with `--dart-define=LAZIM_UPDATE_MANIFEST=...` to point at a
+  /// different host, or pass an empty string to disable checks entirely.
   static const String updateManifestUrl = String.fromEnvironment(
     'LAZIM_UPDATE_MANIFEST',
-    defaultValue: '',
+    defaultValue: 'https://raw.githubusercontent.com/amworx/lazim/main/update_manifest.json',
   );
 
   /// Whether the app should look for updates at all.

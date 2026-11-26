@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
@@ -11,6 +12,26 @@ import 'package:lazim/core/update_service.dart';
 /// strings ranks "1.10.0" below "1.9.0", which would silently hide updates. The
 /// service compares build numbers instead, and these tests pin that down.
 void main() {
+  // checkForUpdate() reads the installed version via PackageInfo, which needs
+  // a binding and a mocked platform channel even though HTTP is mocked.
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  setUp(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+      const MethodChannel('dev.fluttercommunity.plus/package_info'),
+      (call) async => switch (call.method) {
+        'getAll' => {
+            'appName': 'Lazim',
+            'packageName': 'com.amworx.lazim',
+            'version': '1.0.0',
+            'buildNumber': '1',
+          },
+        _ => null,
+      },
+    );
+  });
+
   group('UpdateInfo.fromJson', () {
     test('parses a complete manifest', () {
       final info = UpdateInfo.fromJson({
@@ -66,15 +87,18 @@ void main() {
       return UpdateService(client: client);
     }
 
-    test('returns null when no manifest URL is configured', () async {
-      // AppConfig.updateManifestUrl is empty in tests, so the check is a no-op
-      // rather than a network call to nowhere.
+    test('returns the manifest when a newer build is published', () async {
+      // The default manifest URL is now configured (GitHub raw), so a check
+      // with a newer build must return the update rather than a no-op.
       final service = serviceReturning({
         'version': '9.9.9',
         'buildNumber': 999,
         'apkUrl': 'https://example.com/lazim.apk',
       });
-      expect(await service.checkForUpdate(), null);
+      final info = await service.checkForUpdate();
+      expect(info, isNotNull);
+      expect(info!.buildNumber, 999);
+      expect(info.version, '9.9.9');
     });
 
     test('parses a manifest that starts with a UTF-8 BOM', () async {

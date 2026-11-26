@@ -49,17 +49,39 @@ class FirebaseAuthRepository implements AuthRepository {
   }
 
   @override
-  Stream<AppUser?> authStateChanges() => _auth.authStateChanges().asyncMap((u) async {
+  Stream<AppUser?> authStateChanges() => _auth.userChanges().asyncMap((u) async {
         if (u == null) return null;
-        final mapped = _map(u);
+        // The display name is a user-owned override: Google's name is only a
+        // fallback. Read the stored value so a rename survives a restart, and
+        // use userChanges() (not authStateChanges()) so an in-app rename is
+        // reflected immediately in the UI.
+        final mapped = await _mapWithStoredName(u);
         await _ensureUserDoc(mapped);
         return mapped;
       });
 
+  /// Maps a Firebase user, preferring the display name saved in Firestore over
+  /// the one from the Google/Auth profile.
+  Future<AppUser> _mapWithStoredName(fb.User u) async {
+    final base = _map(u);
+    try {
+      final snap = await _db.collection('users').doc(u.uid).get();
+      final stored = snap.data()?['displayName'] as String?;
+      if (stored != null && stored.trim().isNotEmpty) {
+        return base.copyWith(displayName: stored);
+      }
+    } catch (_) {
+      // Offline or rules hiccup: fall back to the auth profile name.
+    }
+    return base;
+  }
+
   @override
   AppUser? get currentUser {
     final u = _auth.currentUser;
-    return u == null ? null : _map(u);
+    if (u == null) return null;
+    // Synchronous getter: the stream above carries the persisted override.
+    return _map(u);
   }
 
   bool _googleReady = false;

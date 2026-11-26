@@ -13,10 +13,11 @@ import 'common.dart';
 /// in one gesture — that is the whole point of the app, so it gets the biggest
 /// touch target on the row.
 class NeedCard extends ConsumerWidget {
-  const NeedCard({super.key, required this.item, this.onTap});
+  const NeedCard({super.key, required this.item, this.onTap, this.onLongPress});
 
   final NeedItem item;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -40,6 +41,7 @@ class NeedCard extends ConsumerWidget {
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           onTap: onTap,
+          onLongPress: onLongPress,
           borderRadius: BorderRadius.circular(16),
           child: Container(
             padding: const EdgeInsets.fromLTRB(14, 13, 10, 13),

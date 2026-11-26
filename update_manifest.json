@@ -1,0 +1,7 @@
+{
+  "version": "3.1.0",
+  "buildNumber": 5,
+  "apkUrl": "https://github.com/amworx/lazim/releases/download/v3.1.0/app-release.apk",
+  "notes": "بحث سريع، تحديد متعدد، إجراءات بالسحب، تعديل الاسم، وإصلاح المرفقات والتحديثات",
+  "mandatory": false
+}

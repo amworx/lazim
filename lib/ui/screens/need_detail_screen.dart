@@ -323,7 +323,7 @@ class _AttachmentsSectionState extends ConsumerState<_AttachmentsSection> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(AppL10n.of(context).errorGeneric)),
+          SnackBar(content: Text(AppL10n.of(context).attachmentUploadFailed)),
         );
       }
     } finally {
@@ -385,13 +385,33 @@ class _AttachmentsSectionState extends ConsumerState<_AttachmentsSection> {
   }
 
   Future<void> _open(Attachment a) async {
-    final uri = Uri.tryParse(a.url ?? '');
-    if (uri == null) return;
+    final l = AppL10n.of(context);
+    final raw = a.url?.trim();
+    if (raw == null || raw.isEmpty) return;
+
+    final uri = Uri.tryParse(raw);
+    if (uri == null || (!uri.hasScheme && !raw.startsWith('https://'))) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l.attachmentOpenFailed)),
+        );
+      }
+      return;
+    }
+
+    // Prefer the system viewer. For file attachments the Firebase download
+    // URL has no useful extension, so some viewers reject it; in that case
+    // fall back to opening the URL in the browser, which can still download it.
     final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
-    if (!ok && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppL10n.of(context).errorGeneric)),
-      );
+    if (!ok) {
+      final browserOk =
+          await launchUrl(uri, mode: LaunchMode.platformDefault) ||
+          await launchUrl(uri, mode: LaunchMode.inAppBrowserView);
+      if (!browserOk && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l.attachmentOpenFailed)),
+        );
+      }
     }
   }
 
