@@ -85,9 +85,12 @@ class _FamilySetupScreenState extends ConsumerState<FamilySetupScreen> {
     } catch (e) {
       if (mounted) {
         final l = AppL10n.of(context);
-        setState(() => _error = e.toString().contains('not-found')
+        final text = e.toString();
+        setState(() => _error = text.contains('not-found')
             ? l.inviteNotFound
-            : l.errorGeneric);
+            // Show the actual cause: a permission-denied or network error is
+            // actionable, a generic "try again" hides the real problem.
+            : text);
       }
     } finally {
       if (mounted) setState(() => _busy = false);

@@ -220,38 +220,71 @@ class FirebaseFamilyRepository implements FamilyRepository {
     final code = inviteCode.trim().toUpperCase();
     final invite = await _db.collection('invites').doc(code).get();
     if (!invite.exists) return null;
-    final familyId = invite.data()?['familyId'] as String?;
+    final data = invite.data();
+    final familyId = data?['familyId'] as String?;
     if (familyId == null) return null;
-    final doc = await _families.doc(familyId).get();
-    return doc.exists ? Family.fromMap(doc.data()!) : null;
+    // The family document is member-only, so a not-yet-joined user CANNOT read
+    // it here (the rules deny it). Return a lightweight stub from the invite;
+    // joinFamily() reads the real document after membership is granted.
+    return Family(
+      id: familyId,
+      name: (data?['name'] as String?) ?? '',
+      ownerId: (data?['ownerId'] as String?) ?? '',
+      inviteCode: code,
+      createdAt: DateTime.now(),
+    );
   }
 
   @override
   Future<Family> joinFamily({required String inviteCode, required AppUser user}) async {
-    final family = await familyByInviteCode(inviteCode);
-    if (family == null) {
+    final stub = await familyByInviteCode(inviteCode);
+    if (stub == null) {
       throw LazimException('Invite code not found', code: 'invite/not-found');
     }
-    final batch = _db.batch();
-    batch.set(
-      _families.doc(family.id).collection('members').doc(user.id),
-      FamilyMember(
-        userId: user.id,
-        displayName: user.displayName,
-        role: MemberRole.member,
-        joinedAt: DateTime.now(),
-      ).toMap(),
-    );
-    batch.set(
-      _db.collection('users').doc(user.id),
-      {
-        'familyIds': FieldValue.arrayUnion([family.id]),
-      },
-      SetOptions(merge: true),
-    );
-    batch.update(_families.doc(family.id), {'memberCount': FieldValue.increment(1)});
-    await batch.commit();
-    return family;
+    final familyId = stub.id;
+
+    // Idempotency: don't double-count if the user already belongs. The user
+    // doc is readable by its owner, so this check is allowed pre-join.
+    final me = await _db.collection('users').doc(user.id).get();
+    final ids = (me.data()?['familyIds'] as List?)?.cast<String>() ?? const <String>[];
+    final alreadyMember = ids.contains(familyId);
+
+    if (!alreadyMember) {
+      // Phase 1: membership + the user's family mirror. Neither write needs
+      // isMember(): the member doc is written by the user themselves
+      // (memberId == uid) and the user doc is their own.
+      final batch = _db.batch();
+      batch.set(
+        _families.doc(familyId).collection('members').doc(user.id),
+        FamilyMember(
+          userId: user.id,
+          displayName: user.displayName,
+          role: MemberRole.member,
+          joinedAt: DateTime.now(),
+        ).toMap(),
+      );
+      batch.set(
+        _db.collection('users').doc(user.id),
+        {'familyIds': FieldValue.arrayUnion([familyId])},
+        SetOptions(merge: true),
+      );
+      await batch.commit();
+
+      // Phase 2: now a member, so the family-doc update is permitted. Rules
+      // cannot see same-batch writes, which is why this cannot live in the
+      // batch above. Best-effort: membership is what matters, the count is a
+      // display detail.
+      try {
+        await _families.doc(familyId).update({'memberCount': FieldValue.increment(1)});
+      } catch (_) {}
+    }
+
+    // Now allowed: the user is a member of this family.
+    final doc = await _families.doc(familyId).get();
+    if (!doc.exists) {
+      throw LazimException('Invite code not found', code: 'invite/not-found');
+    }
+    return Family.fromMap(doc.data()!);
   }
 
   @override
