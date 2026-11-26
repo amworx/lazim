@@ -66,6 +66,18 @@ service cloud.firestore {
           && request.resource.data.familyId == familyId;
         allow update: if isMember(familyId);
         allow delete: if isMember(familyId);
+
+        // Attachment bytes live here as base64 chunks. This is the free
+        // alternative to Cloud Storage (which requires a Blaze billing
+        // account). Family membership is the only gate, same as the need itself.
+        match /blobs/{blobDoc} {
+          allow read: if isMember(familyId);
+          allow write: if isMember(familyId)
+            && request.resource.data.keys().hasAll(['blobId', 'index', 'count', 'data'])
+            && request.resource.data.data is string
+            && request.resource.data.data.size() <= 1000000;
+          allow delete: if isMember(familyId);
+        }
       }
     }
 

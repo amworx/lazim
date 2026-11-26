@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:go_router/go_router.dart';
@@ -302,6 +303,7 @@ class _AttachmentsSection extends ConsumerStatefulWidget {
 
 class _AttachmentsSectionState extends ConsumerState<_AttachmentsSection> {
   bool _uploading = false;
+  String? _openingId;
 
   Future<void> _pickFile() async {
     final user = ref.read(authStateProvider).value;
@@ -386,9 +388,41 @@ class _AttachmentsSectionState extends ConsumerState<_AttachmentsSection> {
 
   Future<void> _open(Attachment a) async {
     final l = AppL10n.of(context);
+
+    // Firestore-backed files: read the bytes and hand them to the native
+    // bridge, which writes a temp file and opens it with the system viewer.
+    if (a.blobId != null) {
+      setState(() => _openingId = a.id);
+      try {
+        final bytes = await ref
+            .read(needRepositoryProvider)
+            .readAttachmentBytes(widget.item, a);
+        if (bytes == null || bytes.isEmpty) {
+          throw StateError('No attachment bytes available');
+        }
+        await const MethodChannel('lazim/updater').invokeMethod<bool>(
+          'openAttachment',
+          {
+            'name': a.name,
+            'mimeType': a.mimeType ?? 'application/octet-stream',
+            'bytes': Uint8List.fromList(bytes),
+          },
+        );
+      } catch (_) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(l.attachmentOpenFailed)),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _openingId = null);
+      }
+      return;
+    }
+
+    // Plain links (and legacy Storage URLs) open directly in the browser.
     final raw = a.url?.trim();
     if (raw == null || raw.isEmpty) return;
-
     final uri = Uri.tryParse(raw);
     if (uri == null || (!uri.hasScheme && !raw.startsWith('https://'))) {
       if (mounted) {
@@ -399,9 +433,6 @@ class _AttachmentsSectionState extends ConsumerState<_AttachmentsSection> {
       return;
     }
 
-    // Prefer the system viewer. For file attachments the Firebase download
-    // URL has no useful extension, so some viewers reject it; in that case
-    // fall back to opening the URL in the browser, which can still download it.
     final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!ok) {
       final browserOk =
@@ -463,6 +494,7 @@ class _AttachmentsSectionState extends ConsumerState<_AttachmentsSection> {
         else
           ...items.map((a) => _AttachmentTile(
                 attachment: a,
+                opening: _openingId == a.id,
                 onOpen: () => _open(a),
                 onRemove: () async {
                   final user = ref.read(authStateProvider).value;
@@ -482,11 +514,13 @@ class _AttachmentTile extends StatelessWidget {
     required this.attachment,
     required this.onOpen,
     required this.onRemove,
+    this.opening = false,
   });
 
   final Attachment attachment;
   final VoidCallback onOpen;
   final VoidCallback onRemove;
+  final bool opening;
 
   @override
   Widget build(BuildContext context) {
@@ -507,7 +541,15 @@ class _AttachmentTile extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
           child: Row(
             children: [
-              if (attachment.kind == AttachmentKind.image &&
+              if (opening)
+                const SizedBox(
+                  width: 40,
+                  height: 40,
+                  child: Center(
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                )
+              else if (attachment.kind == AttachmentKind.image &&
                   attachment.url != null &&
                   attachment.url!.startsWith('http'))
                 ClipRRect(

@@ -1,7 +1,7 @@
 {
-  "version": "3.1.0",
-  "buildNumber": 5,
-  "apkUrl": "https://github.com/amworx/lazim/releases/download/v3.1.0/app-release.apk",
-  "notes": "بحث سريع، تحديد متعدد، إجراءات بالسحب، تعديل الاسم، وإصلاح المرفقات والتحديثات",
+  "version": "3.2.0",
+  "buildNumber": 6,
+  "apkUrl": "https://github.com/amworx/lazim/releases/download/v3.2.0/app-release.apk",
+  "notes": "المرفقات تعمل الآن بدون حساب فوترة: تُحفظ الملفات في Firestore المجاني وتُفتح على الجهاز",
   "mandatory": false
 }

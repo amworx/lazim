@@ -156,18 +156,27 @@ class Attachment {
     this.url,
     this.storagePath,
     this.sizeBytes,
+    this.blobId,
+    this.mimeType,
   });
 
   final String id;
   final AttachmentKind kind;
   final String name;
 
-  /// Direct URL for links; download URL for uploaded files.
+  /// Direct URL for links; download URL for legacy uploaded files.
   final String? url;
 
-  /// Backend storage path, used for deletion.
+  /// Legacy Cloud Storage path, kept so old attachments can still be removed.
   final String? storagePath;
   final int? sizeBytes;
+
+  /// ID of the Firestore blob document holding this file's base64 chunks.
+  /// Present for files uploaded with the free Firestore-backed storage.
+  final String? blobId;
+
+  /// MIME type, needed when opening the file through the system viewer.
+  final String? mimeType;
   final String addedBy;
   final DateTime addedAt;
 
@@ -180,6 +189,8 @@ class Attachment {
         'url': url,
         'storagePath': storagePath,
         'sizeBytes': sizeBytes,
+        'blobId': blobId,
+        'mimeType': mimeType,
         'addedBy': addedBy,
         'addedAt': addedAt.toUtc().toIso8601String(),
       };
@@ -191,6 +202,8 @@ class Attachment {
         url: m['url'] as String?,
         storagePath: m['storagePath'] as String?,
         sizeBytes: (m['sizeBytes'] as num?)?.toInt(),
+        blobId: m['blobId'] as String?,
+        mimeType: m['mimeType'] as String?,
         addedBy: (m['addedBy'] as String?) ?? '',
         addedAt: DateTime.tryParse((m['addedAt'] as String?) ?? '')?.toLocal() ??
             DateTime.now(),

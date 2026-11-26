@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:io';
 import 'dart:math';
+import 'dart:typed_data';
 
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
@@ -676,6 +677,19 @@ class LocalNeedRepository implements NeedRepository {
       addedAt: DateTime.now(),
     );
     return _store.addAttachment(item, actor, attachment);
+  }
+
+  @override
+  Future<Uint8List?> readAttachmentBytes(NeedItem item, Attachment attachment) async {
+    // The local backend stores a file:// URL to the picked file.
+    if (attachment.url == null) return null;
+    try {
+      final uri = Uri.parse(attachment.url!);
+      if (uri.scheme == 'file') return await File.fromUri(uri).readAsBytes();
+    } catch (_) {
+      // Missing temp file: nothing to read.
+    }
+    return null;
   }
 
   @override

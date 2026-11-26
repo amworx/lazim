@@ -40,7 +40,8 @@ pre-seeded with six items so the list screen is not empty.
 
 **Attachments**
 - Links, images, PDFs, Word docs, anything else.
-- Images preview inline; everything else opens in the system viewer.
+- Links open in the browser; uploaded files open in the system viewer.
+- Files up to 5 MB, stored free in Firestore (no billing account required).
 - Stored per item, deletable.
 
 **Activity trail**
@@ -306,11 +307,12 @@ Things deliberately left for the next pass, so they are not mistaken for finishe
 - **No account deletion flow.** Required by Play Store policy before release.
 - **iOS is scaffolded but unconfigured.** Needs the iOS Firebase app, an APNs key,
   and `GoogleService-Info.plist`.
-- **Firebase Storage is not provisioned.** `firebase/storage.rules` is written
-  but the `lazim-51935` bucket does not exist, so file uploads fail. Enable
-  Storage once in the Firebase console, then deploy the rules with
-  `npx firebase-tools deploy --only storage --project lazim-51935`. Links work
-  without it.
+- **Attachments are stored in Firestore, not Cloud Storage.** Cloud Storage for
+  Firebase now requires a Blaze billing account, which is unavailable in some
+  countries. File bytes are base64-encoded and split into chunk documents under
+  `families/{familyId}/needs/{needId}/blobs`, gated by the same family-membership
+  rules. Limit: 5 MB per file. On-device viewing writes the bytes to cache and
+  opens them with Android's FileProvider. No billing account or card needed.
 - **Self-update is sideload-only.** The in-app updater installs an APK from a
   manifest URL. That is right for direct distribution, but Google Play policy
   forbids an app updating itself, so a Play build must ship with

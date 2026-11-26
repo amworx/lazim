@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import '../domain/enums.dart';
 import '../domain/models.dart';
@@ -97,6 +98,12 @@ abstract interface class NeedRepository {
   Future<Attachment> addLink(NeedItem item, AppUser actor, {required String url, required String name});
 
   Future<Attachment> uploadAttachment(NeedItem item, AppUser actor, {required File file, required String name});
+
+  /// Reads an attachment's bytes back for on-device viewing.
+  ///
+  /// Returns null when the attachment has no stored bytes (e.g. a plain link,
+  /// or a legacy Cloud Storage attachment whose blob is no longer available).
+  Future<Uint8List?> readAttachmentBytes(NeedItem item, Attachment attachment);
 
   Future<void> removeAttachment(NeedItem item, AppUser actor, Attachment attachment);
 }

@@ -65,6 +65,27 @@ class MainActivity : FlutterActivity() {
                         }
                     }
 
+                    // Attachment viewing. The Dart side reads the file bytes out
+                    // of Firestore and hands them here; this writes them to a
+                    // cache file and opens it with whatever app handles the MIME
+                    // type. Needed because a Firestore blob has no URL a viewer
+                    // could open.
+                    "openAttachment" -> {
+                        val name = call.argument<String>("name")
+                        val mime = call.argument<String>("mimeType")
+                        val bytes = call.argument<ByteArray>("bytes")
+                        if (name == null || bytes == null) {
+                            result.error("bad_args", "Missing attachment name or bytes", null)
+                            return@setMethodCallHandler
+                        }
+                        try {
+                            openAttachment(name, mime ?: "application/octet-stream", bytes)
+                            result.success(true)
+                        } catch (e: Exception) {
+                            result.error("open_failed", e.message ?: "Open failed", null)
+                        }
+                    }
+
                     else -> result.notImplemented()
                 }
             }
@@ -80,6 +101,35 @@ class MainActivity : FlutterActivity() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val intent = Intent(Settings.ACTION_MANAGE_UNKNOWN_APP_SOURCES).apply {
             data = Uri.parse("package:$packageName")
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        startActivity(intent)
+    }
+
+    /**
+     * Writes attachment bytes to a cache file and opens it with the system
+     * viewer. The file must live under the `attachments/` cache path declared in
+     * updater_paths.xml, or FileProvider.getUriForFile throws.
+     */
+    private fun openAttachment(name: String, mimeType: String, bytes: ByteArray) {
+        // Strip any path separators a weird filename might carry.
+        val safeName = name.substringAfterLast('/').substringAfterLast('\\')
+            .ifBlank { "attachment" }
+        val dir = File(cacheDir, "attachments")
+        if (!dir.exists()) dir.mkdirs()
+
+        val target = File(dir, safeName)
+        target.writeBytes(bytes)
+
+        val uri: Uri = FileProvider.getUriForFile(
+            this,
+            "$packageName.updater",
+            target,
+        )
+
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, mimeType)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         startActivity(intent)

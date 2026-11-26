@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -38,7 +37,7 @@ final familyRepositoryProvider = Provider<FamilyRepository>((ref) {
 
 final needRepositoryProvider = Provider<NeedRepository>((ref) {
   if (AppConfig.useFirebase && ref.watch(firebaseReadyProvider)) {
-    return FirebaseNeedRepository(FirebaseFirestore.instance, FirebaseStorage.instance);
+    return FirebaseNeedRepository(FirebaseFirestore.instance);
   }
   return LocalNeedRepository(LocalStore.instance);
 });

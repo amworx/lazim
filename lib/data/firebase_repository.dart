@@ -1,10 +1,11 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart' as fb;
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
@@ -359,9 +360,16 @@ class FirebaseFamilyRepository implements FamilyRepository {
 }
 
 class FirebaseNeedRepository implements NeedRepository {
-  FirebaseNeedRepository(this._db, this._storage);
+  FirebaseNeedRepository(this._db);
   final FirebaseFirestore _db;
-  final FirebaseStorage _storage;
+
+  /// Firestore documents are capped at 1 MiB, so file bytes are split across
+  /// chunk documents. 700 KB of raw bytes becomes ~933 KB once base64-encoded,
+  /// which leaves room for the other fields on the document.
+  static const int _chunkBytes = 700 * 1024;
+
+  CollectionReference<Map<String, dynamic>> _blobs(String familyId, String needId) =>
+      _needs(familyId).doc(needId).collection('blobs');
 
   CollectionReference<Map<String, dynamic>> _needs(String familyId) =>
       _db.collection('families').doc(familyId).collection('needs');
@@ -479,17 +487,23 @@ class FirebaseNeedRepository implements NeedRepository {
 
   @override
   Future<void> deleteNeed(NeedItem item, AppUser actor) async {
-    for (final a in item.attachments) {
-      final path = a.storagePath;
-      if (path != null) {
-        try {
-          await _storage.ref(path).delete();
-        } catch (_) {
-          // Orphaned blobs are acceptable; the document is the source of truth.
-        }
-      }
-    }
+    // Delete blob chunks first. Firestore does not cascade subcollections on
+    // parent deletion, so leaving them would leak storage and bill writes.
+    await _deleteAllBlobs(item);
     await _needs(item.familyId).doc(item.id).delete();
+  }
+
+  /// Deletes every chunk document for an item's attachments. Best effort: a
+  /// failure here should not block deleting the item itself.
+  Future<void> _deleteAllBlobs(NeedItem item) async {
+    try {
+      final snap = await _blobs(item.familyId, item.id).get();
+      for (final doc in snap.docs) {
+        await doc.reference.delete();
+      }
+    } catch (_) {
+      // Parent deletion still proceeds; orphaned chunks are harmless to reads.
+    }
   }
 
   @override
@@ -510,22 +524,110 @@ class FirebaseNeedRepository implements NeedRepository {
   @override
   Future<Attachment> uploadAttachment(NeedItem item, AppUser actor,
       {required File file, required String name}) async {
-    final path = 'families/${item.familyId}/needs/${item.id}/${_uuid.v4()}_$name';
-    final ref = _storage.ref(path);
-    final task = await ref.putFile(file);
-    final url = await task.ref.getDownloadURL();
+    final bytes = await file.readAsBytes();
+    if (bytes.isEmpty) {
+      throw LazimException('This file is empty.', code: 'attachment/empty');
+    }
+    // 5 MiB raw keeps each base64 chunk comfortably under Firestore's 1 MiB
+    // document limit and avoids a huge write batch on a slow connection.
+    const maxBytes = 5 * 1024 * 1024;
+    if (bytes.length > maxBytes) {
+      throw LazimException(
+        'Files must be under 5 MB on this plan.',
+        code: 'attachment/too-large',
+      );
+    }
+
+    final blobId = _uuid.v4();
+    final encoded = base64.encode(bytes);
+    final chunkCount = (encoded.length / _chunkBytes).ceil();
+
+    final batch = _db.batch();
+    for (var i = 0; i < chunkCount; i++) {
+      final start = i * _chunkBytes;
+      final end = (start + _chunkBytes).clamp(0, encoded.length);
+      batch.set(_blobs(item.familyId, item.id).doc('${blobId}_$i'), {
+        'blobId': blobId,
+        'index': i,
+        'count': chunkCount,
+        // base64.encode returns a String; substring splits it into chunks.
+        'data': encoded.substring(start, end),
+      });
+    }
+    await batch.commit();
+
     final attachment = Attachment(
       id: _uuid.v4(),
       kind: AttachmentKind.fromMime(null, name),
       name: name,
-      url: url,
-      storagePath: path,
-      sizeBytes: await file.length(),
+      blobId: blobId,
+      sizeBytes: bytes.length,
+      mimeType: _mimeFor(name),
       addedBy: actor.id,
       addedAt: DateTime.now(),
     );
-    await _appendAttachment(item, actor, attachment);
+    try {
+      await _appendAttachment(item, actor, attachment);
+    } catch (e) {
+      // Don't leave an unreferenced blob behind if the item write fails.
+      await _deleteBlob(item.familyId, item.id, blobId, chunkCount).catchError((_) {});
+      rethrow;
+    }
     return attachment;
+  }
+
+  /// Best-effort MIME guess from the file extension. Android's viewer uses it
+  /// to pick the right app for the opened file.
+  String _mimeFor(String name) {
+    final ext = name.split('.').last.toLowerCase();
+    const types = {
+      'pdf': 'application/pdf',
+      'png': 'image/png',
+      'jpg': 'image/jpeg',
+      'jpeg': 'image/jpeg',
+      'gif': 'image/gif',
+      'webp': 'image/webp',
+      'doc': 'application/msword',
+      'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      'xls': 'application/vnd.ms-excel',
+      'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      'txt': 'text/plain',
+    };
+    return types[ext] ?? 'application/octet-stream';
+  }
+
+  /// Reads a Firestore-backed attachment back into bytes.
+  @override
+  Future<Uint8List?> readAttachmentBytes(NeedItem item, Attachment attachment) async {
+    final blobId = attachment.blobId;
+    if (blobId == null) return null; // link or legacy Storage attachment
+    try {
+      final snap = await _blobs(item.familyId, item.id)
+          .where('blobId', isEqualTo: blobId)
+          .get();
+      if (snap.docs.isEmpty) return null;
+      final docs = [...snap.docs]..sort((a, b) => (a['index'] as int).compareTo(b['index'] as int));
+      final buffer = StringBuffer();
+      for (final doc in docs) {
+        buffer.write(doc['data'] as String);
+      }
+      return base64.decode(buffer.toString());
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _deleteBlob(
+    String familyId,
+    String needId,
+    String blobId,
+    int chunkCount,
+  ) async {
+    final batch = _db.batch();
+    for (var i = 0; i < chunkCount; i++) {
+      batch.delete(_blobs(familyId, needId).doc('${blobId}_$i'));
+    }
+    await batch.commit();
   }
 
   Future<void> _appendAttachment(NeedItem item, AppUser actor, Attachment attachment) async {
@@ -546,12 +648,20 @@ class FirebaseNeedRepository implements NeedRepository {
 
   @override
   Future<void> removeAttachment(NeedItem item, AppUser actor, Attachment attachment) async {
-    final path = attachment.storagePath;
-    if (path != null) {
+    // Delete the chunk documents for Firestore-backed files.
+    final blobId = attachment.blobId;
+    if (blobId != null) {
       try {
-        await _storage.ref(path).delete();
+        final snap = await _blobs(item.familyId, item.id)
+            .where('blobId', isEqualTo: blobId)
+            .get();
+        final batch = _db.batch();
+        for (final doc in snap.docs) {
+          batch.delete(doc.reference);
+        }
+        await batch.commit();
       } catch (_) {
-        // Ignore missing blob.
+        // Ignore: removing the attachment reference is the important part.
       }
     }
     await _needs(item.familyId).doc(item.id).update({
