@@ -249,18 +249,35 @@ families/{familyId}/members/{uid}
 
 families/{familyId}/needs/{needId}
   id, familyId, title, note, quantity, unit, status, priority, category,
-  createdBy, createdByName, assignedTo, assignedToName,
+  categoryIds[], createdBy, createdByName, assignedTo, assignedToName,
   createdAt, updatedAt, purchasedAt,
   attachments[], activity[]
+
+families/{familyId}/needs/{needId}/blobs/{blobDoc}
+  blobId, index, count, data   (base64 chunk of an attachment)
+
+families/{familyId}/categories/{categoryId}
+  id, name, iconKey, colorValue, order
 
 invites/{inviteCode}
   familyId
 ```
 
+`categoryIds` is the authoritative list of categories an item belongs to. The
+older single `category` field is still written (as the first selection) and still
+read as a fallback, so documents created before multi-category support keep
+working without a migration. The eight default categories are synthesised in
+code and never stored; only a family's own categories live in `categories`.
+
 `activity` and `attachments` are inline arrays rather than subcollections. That
 keeps the detail screen to one document read instead of N+1 queries. If an item
 ever accumulates hundreds of activity entries, split `activity` into a
 subcollection — the model already has the shape for it.
+
+Activity entries store the author's name as a snapshot at write time, but every
+screen resolves the author id against the live member roster before rendering, so
+renaming yourself updates the whole history immediately. The stored snapshot is
+only used for people who have left the family.
 
 ---
 
@@ -298,6 +315,9 @@ Things deliberately left for the next pass, so they are not mistaken for finishe
   live Firestore listener while the app process is alive. A force-killed app
   will not get a notification until it is opened again. True push would need a
   free Cloudflare Worker calling FCM v1, or Firebase Blaze + Cloud Functions.
+  They are suppressed while the app is in the foreground (the change is already
+  on screen) and the tray is cleared whenever the app returns to the foreground,
+  so nothing accumulates for the user to dismiss by hand.
 - **No offline persistence.** Firestore offline caching is one flag
   (`Settings(persistenceEnabled: true)`); not enabled yet.
 - **No image compression before upload.** A 12 MP photo uploads at full size.
