@@ -42,6 +42,42 @@ final needRepositoryProvider = Provider<NeedRepository>((ref) {
   return LocalNeedRepository(LocalStore.instance);
 });
 
+final categoryRepositoryProvider = Provider<CategoryRepository>((ref) {
+  if (AppConfig.useFirebase && ref.watch(firebaseReadyProvider)) {
+    return FirebaseCategoryRepository(FirebaseFirestore.instance);
+  }
+  return LocalCategoryRepository(LocalStore.instance);
+});
+
+/// Every category available to the active family: the eight built-ins followed
+/// by whatever the family added, in display order.
+final categoriesProvider = Provider<List<NeedCategoryDef>>((ref) {
+  final family = ref.watch(activeFamilyProvider);
+  final custom = family == null
+      ? const <NeedCategoryDef>[]
+      : (ref.watch(customCategoriesProvider).value ?? const <NeedCategoryDef>[]);
+  return [...NeedCategoryDef.builtIns, ...custom];
+});
+
+/// Only the family's own categories, live.
+final customCategoriesProvider = StreamProvider<List<NeedCategoryDef>>((ref) {
+  final family = ref.watch(activeFamilyProvider);
+  if (family == null) return Stream.value(const <NeedCategoryDef>[]);
+  return ref.watch(categoryRepositoryProvider).watchCategories(family.id);
+});
+
+/// Resolves a category id to its definition, falling back to a placeholder so a
+/// deleted category never crashes a list row.
+final categoryByIdProvider = Provider<NeedCategoryDef Function(String)>((ref) {
+  final all = ref.watch(categoriesProvider);
+  return (id) {
+    for (final c in all) {
+      if (c.id == id) return c;
+    }
+    return NeedCategoryDef(id: id, name: id, iconKey: 'label');
+  };
+});
+
 final preferencesRepositoryProvider = Provider<PreferencesRepository>((ref) {
   final prefs = ref.watch(sharedPrefsProvider);
   if (AppConfig.useFirebase && ref.watch(firebaseReadyProvider)) {
@@ -161,6 +197,17 @@ class LocalNotificationsController extends Notifier<void> {
   bool _initialised = false;
   String? _lastFamilyId;
 
+  /// Lets the app lifecycle observer pause notifications while the app is on
+  /// screen and clear the tray when the user comes back to it.
+  Future<void> setForeground(bool foreground) async {
+    final notifier = _notifier ??= LocalNotifier();
+    await notifier.setForeground(foreground);
+  }
+
+  Future<void> clearAll() async {
+    await (_notifier ??= LocalNotifier()).clearAll();
+  }
+
   @override
   void build() {
     // build() re-runs whenever a watched dependency changes; keep one instance
@@ -180,6 +227,7 @@ class LocalNotificationsController extends Notifier<void> {
     final family = ref.watch(activeFamilyProvider);
     final locale = ref.watch(localeProvider);
     final needs = ref.watch(needsProvider).value;
+    final members = ref.watch(membersProvider).value ?? const <FamilyMember>[];
 
     if (user == null || family == null || needs == null) return;
 
@@ -194,6 +242,14 @@ class LocalNotificationsController extends Notifier<void> {
       needs,
       currentUserId: user.id,
       localeCode: locale,
+      // Resolve names from the live roster so a rename shows up in new
+      // notifications instead of the name captured when the item was written.
+      resolveName: (userId, fallback) {
+        for (final m in members) {
+          if (m.userId == userId) return m.displayName;
+        }
+        return fallback;
+      },
     ));
   }
 }

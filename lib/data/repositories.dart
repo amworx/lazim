@@ -68,6 +68,24 @@ abstract interface class FamilyRepository {
   });
 }
 
+/// Family-defined categories. Built-in categories are synthesised in the app and
+/// never stored; only custom ones are persisted here.
+abstract interface class CategoryRepository {
+  /// Custom categories for a family, live.
+  Stream<List<NeedCategoryDef>> watchCategories(String familyId);
+
+  Future<NeedCategoryDef> createCategory({
+    required String familyId,
+    required String name,
+    String? iconKey,
+    int? colorValue,
+  });
+
+  Future<void> renameCategory(String familyId, String categoryId, String name);
+
+  Future<void> deleteCategory(String familyId, String categoryId);
+}
+
 /// The needs list itself.
 abstract interface class NeedRepository {
   /// Live list of items for a family. Filtering happens client-side so the
@@ -83,6 +101,7 @@ abstract interface class NeedRepository {
     String? unit,
     required NeedPriority priority,
     required NeedCategory category,
+    List<String>? categoryIds,
     String? assignedTo,
     String? assignedToName,
   });

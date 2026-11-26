@@ -318,7 +318,7 @@ class AppL10nAr extends AppL10n {
 
   @override
   String attachmentAdded(String name) {
-    return 'أرفق $name';
+    return 'تمت إضافة المرفق';
   }
 
   @override
@@ -587,8 +587,89 @@ class AppL10nAr extends AppL10n {
 
   @override
   String get attachmentUploadFailed =>
-      'تعذّر رفع الملف. تأكد من تفعيل مساحة التخزين في Firebase.';
+      'تعذّر رفع الملف. تحقّق من الاتصال وحاول مرة أخرى.';
 
   @override
   String get attachmentOpenFailed => 'تعذّر فتح الملف.';
+
+  @override
+  String get categoriesTitle => 'الفئات';
+
+  @override
+  String get categoriesSubtitle => 'نظّم احتياجات المنزل بفئات خاصة بك';
+
+  @override
+  String get manageCategories => 'إدارة الفئات';
+
+  @override
+  String get addCategory => 'فئة جديدة';
+
+  @override
+  String get editCategory => 'تعديل الفئة';
+
+  @override
+  String get categoryNameLabel => 'اسم الفئة';
+
+  @override
+  String get categoryNameHint => 'مثال: مستلزمات الحديقة';
+
+  @override
+  String get categoryIconLabel => 'الأيقونة';
+
+  @override
+  String get categoryAdded => 'تمت إضافة الفئة';
+
+  @override
+  String get categoryRenamed => 'تم تعديل الفئة';
+
+  @override
+  String get categoryDeleted => 'تم حذف الفئة';
+
+  @override
+  String categoryDeleteConfirm(String name) {
+    return 'حذف فئة \"$name\"؟ ستبقى الأصناف موجودة بدون هذه الفئة.';
+  }
+
+  @override
+  String get categoriesEmpty => 'لا توجد فئات خاصة بعد';
+
+  @override
+  String get categoriesEmptyBody =>
+      'الفئات الافتراضية جاهزة للاستخدام. أضف فئة خاصة لعائلتك.';
+
+  @override
+  String get builtInCategories => 'الفئات الافتراضية';
+
+  @override
+  String get customCategories => 'فئاتك';
+
+  @override
+  String get selectCategories => 'الفئات';
+
+  @override
+  String get categoriesHint => 'يمكنك اختيار أكثر من فئة';
+
+  @override
+  String get addAttachment => 'إضافة مرفق';
+
+  @override
+  String get attachmentsHint => 'أضف صورًا أو ملفات أو روابط';
+
+  @override
+  String get attachmentPreview => 'معاينة';
+
+  @override
+  String get imagePreviewTitle => 'معاينة الصورة';
+
+  @override
+  String get attachmentTooLarge => 'حجم الملف يجب أن يكون أقل من ٥ ميجابايت.';
+
+  @override
+  String get attachmentEmpty => 'هذا الملف فارغ.';
+
+  @override
+  String get notificationsCleared => 'تم مسح الإشعارات';
+
+  @override
+  String get noCategoriesSelected => 'بدون فئة';
 }

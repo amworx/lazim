@@ -63,14 +63,40 @@ class LazimApp extends ConsumerStatefulWidget {
   ConsumerState<LazimApp> createState() => _LazimAppState();
 }
 
-class _LazimAppState extends ConsumerState<LazimApp> {
+class _LazimAppState extends ConsumerState<LazimApp> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // Push setup is best-effort; a failure here must not block the UI.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(pushServiceProvider).initialise().catchError((_) {});
+      // The app starts in the foreground: nothing should be posted to the tray
+      // while the user is already looking at the list.
+      ref.read(localNotificationsProvider.notifier).setForeground(true);
     });
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final notifier = ref.read(localNotificationsProvider.notifier);
+    switch (state) {
+      case AppLifecycleState.resumed:
+        // Clear anything left in the tray: the user is back in the app and can
+        // see the change itself, so a stale notification is only clutter.
+        notifier.setForeground(true);
+      case AppLifecycleState.paused:
+      case AppLifecycleState.hidden:
+      case AppLifecycleState.inactive:
+      case AppLifecycleState.detached:
+        notifier.setForeground(false);
+    }
   }
 
   @override

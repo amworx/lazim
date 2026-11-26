@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../domain/enums.dart';
+import '../domain/models.dart';
 import '../l10n/app_localizations.dart';
 
 /// Localised labels and visuals for domain enums.
@@ -46,8 +47,38 @@ extension NeedCategoryL10n on NeedCategory {
       };
 }
 
-extension AttachmentKindL10n on AttachmentKind {
-  IconData get icon => switch (this) {
+/// Icons a family can pick for a custom category. Keys are stored, so they must
+/// stay stable; adding new ones is safe, renaming is not.
+const Map<String, IconData> categoryIcons = {
+  'label': Icons.label_outline_rounded,
+  'shopping_basket': Icons.shopping_basket_outlined,
+  'cleaning': Icons.cleaning_services_outlined,
+  'medication': Icons.medication_outlined,
+  'spa': Icons.spa_outlined,
+  'child': Icons.child_care_outlined,
+  'kitchen': Icons.kitchen_outlined,
+  'electrical': Icons.electrical_services_outlined,
+  'inventory': Icons.inventory_2_outlined,
+  'pets': Icons.pets_outlined,
+  'school': Icons.school_outlined,
+  'car': Icons.directions_car_outlined,
+  'tools': Icons.handyman_outlined,
+  'gift': Icons.card_giftcard_outlined,
+  'work': Icons.work_outline_rounded,
+  'sports': Icons.sports_soccer_outlined,
+};
+
+IconData categoryIconFor(NeedCategoryDef def) {
+  if (def.builtIn != null) return def.builtIn!.icon;
+  return categoryIcons[def.iconKey] ?? categoryIcons['label']!;
+}
+
+/// Display name for a category: built-ins translate with the app language,
+/// custom ones show the name the family typed.
+String categoryLabel(NeedCategoryDef def, AppL10n l) =>
+    def.builtIn?.label(l) ?? (def.name.trim().isEmpty ? l.categoryOther : def.name);
+
+extension AttachmentKindL10n on AttachmentKind {  IconData get icon => switch (this) {
         AttachmentKind.link => Icons.link_rounded,
         AttachmentKind.image => Icons.image_outlined,
         AttachmentKind.pdf => Icons.picture_as_pdf_outlined,

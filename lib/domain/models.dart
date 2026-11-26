@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart' show Color;
+
 import 'enums.dart';
 
 /// A person using Lazim. Keyed by the auth provider's user id.
@@ -256,6 +258,71 @@ class ActivityEntry {
       );
 }
 
+/// A category a family can file items under.
+///
+/// The eight built-in categories are synthesised in code and always available;
+/// they are never stored, so a family that never customises anything still sees
+/// the defaults and no migration is needed. Custom categories live in
+/// `families/{familyId}/categories/{id}` and carry their own name and icon.
+class NeedCategoryDef {
+  const NeedCategoryDef({
+    required this.id,
+    this.name = '',
+    this.builtIn,
+    this.iconKey,
+    this.colorValue,
+    this.order = 0,
+  });
+
+  /// Stable identifier. For built-ins this is the [NeedCategory] code.
+  final String id;
+
+  /// Display name for custom categories. Empty for built-ins, which use the
+  /// localised label so they translate with the app language.
+  final String name;
+
+  /// Set for the eight built-ins; null for custom categories.
+  final NeedCategory? builtIn;
+
+  /// Icon key for custom categories, resolved through [categoryIconFor].
+  final String? iconKey;
+
+  /// Optional ARGB colour for custom categories.
+  final int? colorValue;
+
+  final int order;
+
+  bool get isBuiltIn => builtIn != null;
+
+  Color? get color => colorValue == null ? null : Color(colorValue!);
+
+  Map<String, dynamic> toMap() => {
+        'id': id,
+        'name': name,
+        'iconKey': iconKey,
+        'colorValue': colorValue,
+        'order': order,
+      };
+
+  factory NeedCategoryDef.fromMap(Map<String, dynamic> m) => NeedCategoryDef(
+        id: (m['id'] as String?) ?? '',
+        name: (m['name'] as String?) ?? '',
+        iconKey: m['iconKey'] as String?,
+        colorValue: (m['colorValue'] as num?)?.toInt(),
+        order: (m['order'] as num?)?.toInt() ?? 0,
+      );
+
+  /// The eight defaults, in display order.
+  static List<NeedCategoryDef> get builtIns => [
+        for (var i = 0; i < NeedCategory.values.length; i++)
+          NeedCategoryDef(
+            id: NeedCategory.values[i].code,
+            builtIn: NeedCategory.values[i],
+            order: i,
+          ),
+      ];
+}
+
 /// The core entity: one thing the home needs.
 class NeedItem {
   const NeedItem({
@@ -269,6 +336,7 @@ class NeedItem {
     required this.createdByName,
     required this.createdAt,
     required this.updatedAt,
+    this.categoryIds = const [],
     this.note,
     this.quantity = 1,
     this.unit,
@@ -287,7 +355,22 @@ class NeedItem {
   final String? unit;
   final NeedStatus status;
   final NeedPriority priority;
+
+  /// Legacy single category, kept so documents written before multi-category
+  /// support still read correctly. New writes set both this (to the first
+  /// selected category) and [categoryIds].
   final NeedCategory category;
+
+  /// Every category this item belongs to, by [NeedCategoryDef.id]. Empty on
+  /// documents written before multi-category support, in which case
+  /// [effectiveCategoryIds] falls back to [category].
+  final List<String> categoryIds;
+
+  /// Category ids to display and filter on, tolerating legacy documents.
+  List<String> get effectiveCategoryIds =>
+      categoryIds.isNotEmpty ? categoryIds : [category.code];
+
+  bool hasCategory(String id) => effectiveCategoryIds.contains(id);
   final String createdBy;
   final String createdByName;
   final String? assignedTo;
@@ -311,6 +394,7 @@ class NeedItem {
     NeedStatus? status,
     NeedPriority? priority,
     NeedCategory? category,
+    List<String>? categoryIds,
     String? assignedTo,
     String? assignedToName,
     DateTime? updatedAt,
@@ -328,6 +412,7 @@ class NeedItem {
         status: status ?? this.status,
         priority: priority ?? this.priority,
         category: category ?? this.category,
+        categoryIds: categoryIds ?? this.categoryIds,
         createdBy: createdBy,
         createdByName: createdByName,
         assignedTo: assignedTo ?? this.assignedTo,
@@ -349,6 +434,7 @@ class NeedItem {
         'status': status.code,
         'priority': priority.code,
         'category': category.code,
+        'categoryIds': effectiveCategoryIds,
         'createdBy': createdBy,
         'createdByName': createdByName,
         'assignedTo': assignedTo,
@@ -370,6 +456,9 @@ class NeedItem {
         status: NeedStatus.fromCode(m['status'] as String?),
         priority: NeedPriority.fromCode(m['priority'] as String?),
         category: NeedCategory.fromCode(m['category'] as String?),
+        categoryIds: ((m['categoryIds'] as List?) ?? const [])
+            .map((e) => e.toString())
+            .toList(),
         createdBy: (m['createdBy'] as String?) ?? '',
         createdByName: (m['createdByName'] as String?) ?? '',
         assignedTo: m['assignedTo'] as String?,
@@ -402,7 +491,7 @@ class NeedFilter {
   });
 
   final Set<NeedStatus> statuses;
-  final Set<NeedCategory> categories;
+  final Set<String> categories;
   final Set<NeedPriority> priorities;
   final String? assigneeId;
   final DateTime? from;
@@ -428,7 +517,7 @@ class NeedFilter {
 
   NeedFilter copyWith({
     Set<NeedStatus>? statuses,
-    Set<NeedCategory>? categories,
+    Set<String>? categories,
     Set<NeedPriority>? priorities,
     String? assigneeId,
     bool clearAssignee = false,
@@ -453,7 +542,10 @@ class NeedFilter {
     final q = query.trim().toLowerCase();
     return items.where((item) {
       if (statuses.isNotEmpty && !statuses.contains(item.status)) return false;
-      if (categories.isNotEmpty && !categories.contains(item.category)) return false;
+      if (categories.isNotEmpty &&
+          !item.effectiveCategoryIds.any(categories.contains)) {
+        return false;
+      }
       if (priorities.isNotEmpty && !priorities.contains(item.priority)) return false;
       if (assigneeId != null && item.assignedTo != assigneeId) return false;
       if (from != null && item.createdAt.isBefore(from!)) return false;

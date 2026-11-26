@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../core/formatting.dart';
@@ -8,6 +11,7 @@ import '../../core/theme.dart';
 import '../../domain/enums.dart';
 import '../../domain/models.dart';
 import '../../l10n/app_localizations.dart';
+import '../widgets/category_picker.dart';
 import '../widgets/common.dart';
 
 /// Add or edit an item. A full page rather than a sheet: the form has enough
@@ -28,14 +32,34 @@ class _NeedEditorScreenState extends ConsumerState<NeedEditorScreen> {
   late final TextEditingController _unit;
 
   late NeedPriority _priority;
-  late NeedCategory _category;
+  late List<String> _categoryIds;
   String? _assignedTo;
   bool _busy = false;
   String? _error;
 
+  /// Files staged while creating a new item. They are uploaded right after the
+  /// item document exists, because an attachment needs a need id to hang off.
+  final List<({String path, String name})> _staged = [];
+  final bool _uploading = false;
+
   final _formKey = GlobalKey<FormState>();
 
   bool get _isEdit => widget.existing != null;
+
+  /// The legacy single-category field is kept in sync with the first selection,
+  /// so older builds and the history filter still behave.
+  NeedCategory get _primaryCategory {
+    if (_categoryIds.isEmpty) return NeedCategory.other;
+    return NeedCategory.fromCode(_categoryIds.first);
+  }
+
+  Future<void> _stageFile() async {
+    final picked = await FilePicker.pickFile(type: FileType.any);
+    final path = picked?.path;
+    final name = picked?.name;
+    if (path == null || name == null) return;
+    setState(() => _staged.add((path: path, name: name)));
+  }
 
   @override
   void initState() {
@@ -46,7 +70,7 @@ class _NeedEditorScreenState extends ConsumerState<NeedEditorScreen> {
     _quantity = TextEditingController(text: '${e?.quantity ?? 1}');
     _unit = TextEditingController(text: e?.unit ?? '');
     _priority = e?.priority ?? NeedPriority.normal;
-    _category = e?.category ?? NeedCategory.groceries;
+    _categoryIds = e == null ? ['groceries'] : [...e.effectiveCategoryIds];
     _assignedTo = e?.assignedTo;
   }
 
@@ -84,7 +108,8 @@ class _NeedEditorScreenState extends ConsumerState<NeedEditorScreen> {
           'quantity': qty,
           'unit': unit,
           'priority': _priority.code,
-          'category': _category.code,
+          'category': _primaryCategory.code,
+          'categoryIds': _categoryIds,
         });
         if (_assignedTo != existing.assignedTo) {
           final members = ref.read(membersProvider).value ?? const <FamilyMember>[];
@@ -100,7 +125,7 @@ class _NeedEditorScreenState extends ConsumerState<NeedEditorScreen> {
         for (final m in members) {
           if (m.userId == _assignedTo) assignedName = m.displayName;
         }
-        await repo.createNeed(
+        final created = await repo.createNeed(
           familyId: family.id,
           actor: user,
           title: _title.text.trim(),
@@ -108,10 +133,19 @@ class _NeedEditorScreenState extends ConsumerState<NeedEditorScreen> {
           quantity: qty,
           unit: unit,
           priority: _priority,
-          category: _category,
+          category: _primaryCategory,
+          categoryIds: _categoryIds,
           assignedTo: _assignedTo,
           assignedToName: assignedName,
         );
+        // Upload anything staged on the create form now that the item exists.
+        for (final f in _staged) {
+          try {
+            await repo.uploadAttachment(created, user, file: File(f.path), name: f.name);
+          } catch (_) {
+            // One failed file must not lose the item the user just created.
+          }
+        }
       }
       if (mounted) {
         if (context.canPop()) {
@@ -282,50 +316,45 @@ class _NeedEditorScreenState extends ConsumerState<NeedEditorScreen> {
             ),
             const SizedBox(height: 22),
 
-            _Label(l.categoryLabel),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: NeedCategory.values.map((c) {
-                final selected = _category == c;
-                final scheme = theme.colorScheme;
-                return GestureDetector(
-                  onTap: () => setState(() => _category = c),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 140),
-                    padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 9),
-                    decoration: BoxDecoration(
-                      color: selected ? scheme.primary : Colors.transparent,
-                      borderRadius: BorderRadius.circular(11),
-                      border: Border.all(
-                        color: selected ? scheme.primary : theme.dividerColor,
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          c.icon,
-                          size: 16,
-                          color: selected ? Colors.white : LazimColors.muted,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          c.label(l),
-                          style: TextStyle(
-                            fontFamily: 'Cairo',
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: selected ? Colors.white : null,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }).toList(),
+            _Label(l.selectCategories),
+            const SizedBox(height: 4),
+            Text(
+              l.categoriesHint,
+              style: const TextStyle(
+                fontFamily: 'Cairo',
+                fontSize: 11.5,
+                color: LazimColors.muted,
+              ),
             ),
+            const SizedBox(height: 8),
+            CategoryPicker(
+              selected: _categoryIds,
+              onChanged: (next) => setState(() => _categoryIds = next),
+            ),
+            const SizedBox(height: 22),
+
+            // Attachments. On create the files are staged and uploaded right
+            // after the item is written; on edit they go straight to the item.
+            _Label(l.addAttachment),
+            const SizedBox(height: 4),
+            Text(
+              l.attachmentsHint,
+              style: const TextStyle(
+                fontFamily: 'Cairo',
+                fontSize: 11.5,
+                color: LazimColors.muted,
+              ),
+            ),
+            const SizedBox(height: 8),
+            if (_isEdit)
+              _ExistingAttachments(item: widget.existing!)
+            else
+              _StagedAttachments(
+                files: _staged,
+                busy: _uploading,
+                onAdd: _stageFile,
+                onRemove: (i) => setState(() => _staged.removeAt(i)),
+              ),
             const SizedBox(height: 22),
 
             if (members.length > 1) ...[
@@ -392,6 +421,161 @@ class _NeedEditorScreenState extends ConsumerState<NeedEditorScreen> {
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Files picked on the create form, before the item exists.
+class _StagedAttachments extends StatelessWidget {
+  const _StagedAttachments({
+    required this.files,
+    required this.busy,
+    required this.onAdd,
+    required this.onRemove,
+  });
+
+  final List<({String path, String name})> files;
+  final bool busy;
+  final VoidCallback onAdd;
+  final ValueChanged<int> onRemove;
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppL10n.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ...files.asMap().entries.map((e) => Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(11),
+                border: Border.all(color: Theme.of(context).dividerColor),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.attach_file_rounded, size: 18, color: LazimColors.muted),
+                  const SizedBox(width: 9),
+                  Expanded(
+                    child: Text(
+                      e.value.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontFamily: 'Cairo', fontSize: 13),
+                    ),
+                  ),
+                  IconButton(
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.close_rounded, size: 18),
+                    onPressed: () => onRemove(e.key),
+                  ),
+                ],
+              ),
+            )),
+        OutlinedButton.icon(
+          onPressed: busy ? null : onAdd,
+          icon: const Icon(Icons.attach_file_rounded, size: 18),
+          label: Text(l.addAttachment),
+        ),
+      ],
+    );
+  }
+}
+
+/// Attachments already on an existing item, with add/remove.
+class _ExistingAttachments extends ConsumerStatefulWidget {
+  const _ExistingAttachments({required this.item});
+  final NeedItem item;
+
+  @override
+  ConsumerState<_ExistingAttachments> createState() => _ExistingAttachmentsState();
+}
+
+class _ExistingAttachmentsState extends ConsumerState<_ExistingAttachments> {
+  bool _busy = false;
+
+  Future<void> _add() async {
+    final user = ref.read(authStateProvider).value;
+    if (user == null) return;
+    final picked = await FilePicker.pickFile(type: FileType.any);
+    final path = picked?.path;
+    final name = picked?.name;
+    if (path == null || name == null) return;
+
+    if (!mounted) return;
+    setState(() => _busy = true);
+    final l = AppL10n.of(context);
+    try {
+      await ref.read(needRepositoryProvider).uploadAttachment(
+            widget.item,
+            user,
+            file: File(path),
+            name: name,
+          );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(l.attachmentUploadFailed)),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppL10n.of(context);
+    final items = widget.item.attachments;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ...items.map((a) => Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(11),
+                border: Border.all(color: Theme.of(context).dividerColor),
+              ),
+              child: Row(
+                children: [
+                  Icon(a.kind.icon, size: 18, color: LazimColors.muted),
+                  const SizedBox(width: 9),
+                  Expanded(
+                    child: Text(
+                      a.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontFamily: 'Cairo', fontSize: 13),
+                    ),
+                  ),
+                  IconButton(
+                    visualDensity: VisualDensity.compact,
+                    icon: const Icon(Icons.close_rounded, size: 18),
+                    onPressed: () async {
+                      final user = ref.read(authStateProvider).value;
+                      if (user == null) return;
+                      await ref
+                          .read(needRepositoryProvider)
+                          .removeAttachment(widget.item, user, a);
+                    },
+                  ),
+                ],
+              ),
+            )),
+        OutlinedButton.icon(
+          onPressed: _busy ? null : _add,
+          icon: _busy
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Icon(Icons.attach_file_rounded, size: 18),
+          label: Text(l.addAttachment),
+        ),
+      ],
     );
   }
 }

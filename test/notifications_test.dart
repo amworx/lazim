@@ -92,4 +92,33 @@ void main() {
       expect(messages.first.body, contains('حليب'));
     });
   });
+
+  group('live name resolution', () {
+    test('uses the resolved name instead of the stored snapshot', () {
+      final messages = selectNotifications(
+        [needWith('a6', 'uid-wife')],
+        currentUserId: 'me',
+        localeCode: 'en',
+        seen: <String>{},
+        primed: true,
+        resolveName: (userId, fallback) =>
+            userId == 'uid-wife' ? 'Renamed Person' : fallback,
+      );
+      expect(messages.length, 1);
+      expect(messages.first.body, contains('Renamed Person'));
+      expect(messages.first.body, isNot(contains('uid-wife')));
+    });
+
+    test('falls back to the stored name for a departed member', () {
+      final messages = selectNotifications(
+        [needWith('a7', 'uid-gone')],
+        currentUserId: 'me',
+        localeCode: 'en',
+        seen: <String>{},
+        primed: true,
+        resolveName: (userId, fallback) => fallback,
+      );
+      expect(messages.single.body, contains('uid-gone'));
+    });
+  });
 }

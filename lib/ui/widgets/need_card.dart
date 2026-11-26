@@ -7,6 +7,7 @@ import '../../core/theme.dart';
 import '../../domain/enums.dart';
 import '../../domain/models.dart';
 import '../../l10n/app_localizations.dart';
+import 'attachment_preview.dart';
 import 'common.dart';
 
 /// The main list row. Tap opens detail; the trailing control completes the item
@@ -103,6 +104,10 @@ class NeedCard extends ConsumerWidget {
                             fontSize: 13,
                           ),
                         ),
+                      ],
+                      if (item.attachments.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        AttachmentStrip(item: item, size: 44),
                       ],
                       const SizedBox(height: 8),
                       Wrap(

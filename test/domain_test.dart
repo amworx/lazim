@@ -60,7 +60,7 @@ void main() {
     });
 
     test('filters by category', () {
-      final result = const NeedFilter(categories: {NeedCategory.pharmacy}).apply(items);
+      final result = const NeedFilter(categories: {'pharmacy'}).apply(items);
       expect(result.map((e) => e.id), ['3']);
     });
 
@@ -94,7 +94,7 @@ void main() {
     test('combines filters', () {
       final result = const NeedFilter(
         statuses: {NeedStatus.open},
-        categories: {NeedCategory.pharmacy},
+        categories: {'pharmacy'},
       ).apply(items);
       expect(result.map((e) => e.id), ['3']);
     });
@@ -102,7 +102,7 @@ void main() {
     test('activeCount reflects distinct filter groups', () {
       const f = NeedFilter(
         statuses: {NeedStatus.open},
-        categories: {NeedCategory.groceries},
+        categories: {'groceries'},
         query: 'milk',
       );
       expect(f.activeCount, 3);
@@ -207,6 +207,66 @@ void main() {
       expect(NeedStatus.open.isActive, isTrue);
       expect(NeedStatus.claimed.isActive, isTrue);
       expect(NeedStatus.open.isDone, isFalse);
+    });
+  });
+
+  group('multi-category items', () {
+    NeedItem multi(List<String> ids, {NeedCategory legacy = NeedCategory.other}) =>
+        NeedItem(
+          id: 'm1',
+          familyId: 'f',
+          title: 'Batteries',
+          status: NeedStatus.open,
+          priority: NeedPriority.normal,
+          category: legacy,
+          categoryIds: ids,
+          createdBy: 'u1',
+          createdByName: 'A',
+          createdAt: DateTime(2026),
+          updatedAt: DateTime(2026),
+        );
+
+    test('an item matches any of its categories', () {
+      final item = multi(['electronics', 'kids']);
+      expect(item.hasCategory('electronics'), isTrue);
+      expect(item.hasCategory('kids'), isTrue);
+      expect(item.hasCategory('groceries'), isFalse);
+    });
+
+    test('filter matches on any selected category id', () {
+      final items = [multi(['electronics', 'kids'])];
+      expect(
+        const NeedFilter(categories: {'kids'}).apply(items).map((e) => e.id),
+        ['m1'],
+      );
+      expect(const NeedFilter(categories: {'groceries'}).apply(items), isEmpty);
+    });
+
+    test('legacy documents fall back to the single category field', () {
+      final legacy = multi(const [], legacy: NeedCategory.pharmacy);
+      expect(legacy.effectiveCategoryIds, ['pharmacy']);
+      expect(legacy.hasCategory('pharmacy'), isTrue);
+      expect(const NeedFilter(categories: {'pharmacy'}).apply([legacy]).length, 1);
+    });
+
+    test('categoryIds round-trip through toMap and fromMap', () {
+      final restored = NeedItem.fromMap(multi(['electronics', 'kids']).toMap());
+      expect(restored.categoryIds, ['electronics', 'kids']);
+      expect(restored.effectiveCategoryIds, ['electronics', 'kids']);
+    });
+
+    test('built-in categories are synthesised with stable ids', () {
+      final builtIns = NeedCategoryDef.builtIns;
+      expect(builtIns.length, NeedCategory.values.length);
+      expect(builtIns.first.id, NeedCategory.groceries.code);
+      expect(builtIns.every((c) => c.isBuiltIn), isTrue);
+    });
+
+    test('a custom category carries its own name and icon key', () {
+      const custom = NeedCategoryDef(id: 'abc', name: 'Garden', iconKey: 'tools');
+      expect(custom.isBuiltIn, isFalse);
+      expect(NeedCategoryDef.fromMap(custom.toMap()).name, 'Garden');
+      expect(NeedCategoryDef.fromMap(custom.toMap()).iconKey, 'tools');
     });
   });
 }

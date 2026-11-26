@@ -1,4 +1,4 @@
-import 'dart:io';
+﻿import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -13,6 +13,8 @@ import '../../core/theme.dart';
 import '../../domain/enums.dart';
 import '../../domain/models.dart';
 import '../../l10n/app_localizations.dart';
+import '../widgets/attachment_preview.dart';
+import '../widgets/category_picker.dart';
 import '../widgets/common.dart';
 
 /// Full detail for one item: status controls, attachments, activity trail.
@@ -68,12 +70,12 @@ class NeedDetailScreen extends ConsumerWidget {
   }
 }
 
-class _TitleBlock extends StatelessWidget {
+class _TitleBlock extends ConsumerWidget {
   const _TitleBlock({required this.item});
   final NeedItem item;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l = AppL10n.of(context);
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
@@ -110,7 +112,7 @@ class _TitleBlock extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    l.addedBy(item.createdByName),
+                    l.addedBy(liveName(ref, item.createdBy, item.createdByName)),
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: LazimColors.muted,
                       fontSize: 13,
@@ -239,10 +241,32 @@ class _DetailsCard extends StatelessWidget {
             value: item.priority.label(l),
           ),
           const Divider(height: 1),
-          DetailRow(
-            icon: item.category.icon,
-            label: l.categoryLabel,
-            value: item.category.label(l),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(Icons.sell_outlined, size: 19, color: LazimColors.muted),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        l.categoryLabel,
+                        style: const TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 11.5,
+                          color: LazimColors.muted,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      CategoryChips(ids: item.effectiveCategoryIds, dense: false),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
           const Divider(height: 1),
           DetailRow(
@@ -262,7 +286,7 @@ class _DetailsCard extends StatelessWidget {
             icon: Icons.event_outlined,
             label: l.historyTitle,
             value:
-                '${relativeDay(item.createdAt, l, l.localeName)} · ${clockTime(item.createdAt, l.localeName)}',
+                '${relativeDay(item.createdAt, l, l.localeName)} Â· ${clockTime(item.createdAt, l.localeName)}',
           ),
         ],
       ),
@@ -303,7 +327,6 @@ class _AttachmentsSection extends ConsumerStatefulWidget {
 
 class _AttachmentsSectionState extends ConsumerState<_AttachmentsSection> {
   bool _uploading = false;
-  String? _openingId;
 
   Future<void> _pickFile() async {
     final user = ref.read(authStateProvider).value;
@@ -392,7 +415,6 @@ class _AttachmentsSectionState extends ConsumerState<_AttachmentsSection> {
     // Firestore-backed files: read the bytes and hand them to the native
     // bridge, which writes a temp file and opens it with the system viewer.
     if (a.blobId != null) {
-      setState(() => _openingId = a.id);
       try {
         final bytes = await ref
             .read(needRepositoryProvider)
@@ -414,8 +436,6 @@ class _AttachmentsSectionState extends ConsumerState<_AttachmentsSection> {
             SnackBar(content: Text(l.attachmentOpenFailed)),
           );
         }
-      } finally {
-        if (mounted) setState(() => _openingId = null);
       }
       return;
     }
@@ -492,149 +512,59 @@ class _AttachmentsSectionState extends ConsumerState<_AttachmentsSection> {
             ),
           )
         else
-          ...items.map((a) => _AttachmentTile(
-                attachment: a,
-                opening: _openingId == a.id,
-                onOpen: () => _open(a),
-                onRemove: () async {
-                  final user = ref.read(authStateProvider).value;
-                  if (user == null) return;
-                  await ref
-                      .read(needRepositoryProvider)
-                      .removeAttachment(widget.item, user, a);
-                },
-              )),
+          AttachmentGrid(
+            item: widget.item,
+            onOpen: _open,
+            onRemove: (a) async {
+              final user = ref.read(authStateProvider).value;
+              if (user == null) return;
+              await ref
+                  .read(needRepositoryProvider)
+                  .removeAttachment(widget.item, user, a);
+            },
+          ),
       ],
     );
   }
 }
 
-class _AttachmentTile extends StatelessWidget {
-  const _AttachmentTile({
-    required this.attachment,
-    required this.onOpen,
-    required this.onRemove,
-    this.opening = false,
-  });
 
-  final Attachment attachment;
-  final VoidCallback onOpen;
-  final VoidCallback onRemove;
-  final bool opening;
 
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final scheme = Theme.of(context).colorScheme;
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      decoration: BoxDecoration(
-        color: isDark ? LazimColors.darkSurface : LazimColors.surface,
-        borderRadius: BorderRadius.circular(13),
-        border: Border.all(color: isDark ? LazimColors.darkLine : LazimColors.line),
-      ),
-      child: InkWell(
-        onTap: onOpen,
-        borderRadius: BorderRadius.circular(13),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
-          child: Row(
-            children: [
-              if (opening)
-                const SizedBox(
-                  width: 40,
-                  height: 40,
-                  child: Center(
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  ),
-                )
-              else if (attachment.kind == AttachmentKind.image &&
-                  attachment.url != null &&
-                  attachment.url!.startsWith('http'))
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Image.network(
-                    attachment.url!,
-                    width: 40,
-                    height: 40,
-                    fit: BoxFit.cover,
-                    errorBuilder: (_, _, _) => _iconBox(scheme),
-                  ),
-                )
-              else
-                _iconBox(scheme),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      attachment.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontFamily: 'Cairo',
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14,
-                      ),
-                    ),
-                    if (attachment.sizeBytes != null)
-                      Text(
-                        formatBytes(attachment.sizeBytes),
-                        style: const TextStyle(
-                          fontFamily: 'Cairo',
-                          fontSize: 11.5,
-                          color: LazimColors.muted,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              IconButton(
-                onPressed: onRemove,
-                icon: const Icon(Icons.close_rounded, size: 18),
-                visualDensity: VisualDensity.compact,
-                color: LazimColors.muted,
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+/// Resolves a user id to the name the family currently sees.
+///
+/// Activity entries and item headers store the author name as a snapshot at
+/// write time. When somebody renames themselves those snapshots go stale, so
+/// every render resolves the id against the live member roster and only falls
+/// back to the stored snapshot for people who have left the family.
+String liveName(WidgetRef ref, String userId, String fallback) {
+  if (userId.isEmpty) return fallback;
+  final members = ref.watch(membersProvider).value ?? const <FamilyMember>[];
+  for (final m in members) {
+    if (m.userId == userId) return m.displayName;
   }
-
-  Widget _iconBox(ColorScheme scheme) => Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: scheme.primary.withValues(alpha: 0.09),
-          borderRadius: BorderRadius.circular(9),
-        ),
-        child: Icon(attachment.kind.icon, size: 20, color: scheme.primary),
-      );
+  return fallback;
 }
 
-class _ActivitySection extends StatelessWidget {
+class _ActivitySection extends ConsumerWidget {
   const _ActivitySection({required this.item});
   final NeedItem item;
 
-  String _describe(ActivityEntry e, AppL10n l) {
+  String _describe(ActivityEntry e, AppL10n l, String name) {
     return switch (e.type) {
-      ActivityType.created => l.activityCreated(e.actorName),
+      ActivityType.created => l.activityCreated(name),
       ActivityType.statusChanged => l.activityStatusChanged(
-          e.actorName,
+          name,
           NeedStatus.fromCode(e.fromValue).label(l),
           NeedStatus.fromCode(e.toValue).label(l),
         ),
-      ActivityType.assigned => l.activityAssigned(e.actorName, e.toValue ?? ''),
-      ActivityType.attachmentAdded => l.activityAttachment(e.actorName, e.toValue ?? ''),
-      _ => l.activityEdited(e.actorName),
+      ActivityType.assigned => l.activityAssigned(name, e.toValue ?? ''),
+      ActivityType.attachmentAdded => l.activityAttachment(name, e.toValue ?? ''),
+      _ => l.activityEdited(name),
     };
   }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l = AppL10n.of(context);
     final entries = [...item.activity]..sort((a, b) => b.at.compareTo(a.at));
 
@@ -642,38 +572,41 @@ class _ActivitySection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SectionHeader(title: l.activityTitle),
-        ...entries.map((e) => Padding(
-              padding: const EdgeInsets.symmetric(vertical: 7),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  MemberAvatar(name: e.actorName, size: 28),
-                  const SizedBox(width: 11),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          _describe(e, l),
-                          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                fontSize: 13.5,
-                                height: 1.5,
-                              ),
+        ...entries.map((e) {
+          final name = liveName(ref, e.actorId, e.actorName);
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 7),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                MemberAvatar(name: name, size: 28),
+                const SizedBox(width: 11),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _describe(e, l, name),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              fontSize: 13.5,
+                              height: 1.5,
+                            ),
+                      ),
+                      Text(
+                        '${relativeDay(e.at, l, l.localeName)} · ${clockTime(e.at, l.localeName)}',
+                        style: const TextStyle(
+                          fontFamily: 'Cairo',
+                          fontSize: 11.5,
+                          color: LazimColors.muted,
                         ),
-                        Text(
-                          '${relativeDay(e.at, l, l.localeName)} · ${clockTime(e.at, l.localeName)}',
-                          style: const TextStyle(
-                            fontFamily: 'Cairo',
-                            fontSize: 11.5,
-                            color: LazimColors.muted,
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            )),
+                ),
+              ],
+            ),
+          );
+        }),
       ],
     );
   }

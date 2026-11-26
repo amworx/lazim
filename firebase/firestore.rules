@@ -59,6 +59,18 @@ service cloud.firestore {
           && (memberId == uid() || isOwner(familyId));
       }
 
+      match /categories/{categoryId} {
+        // Family-defined categories. Built-ins are synthesised in the app and
+        // never stored, so only custom ones appear here.
+        allow read: if isMember(familyId);
+        allow create: if isMember(familyId)
+          && request.resource.data.name is string
+          && request.resource.data.name.size() > 0
+          && request.resource.data.name.size() <= 60;
+        allow update: if isMember(familyId);
+        allow delete: if isMember(familyId);
+      }
+
       match /needs/{needId} {
         allow read: if isMember(familyId);
         allow create: if isMember(familyId)

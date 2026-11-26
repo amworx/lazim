@@ -1,9 +1,7 @@
 {
   "@@locale": "en",
-
   "appName": "Lazim",
   "appTagline": "Everything the home needs, in one place.",
-
   "signInTitle": "Welcome to Lazim",
   "signInSubtitle": "One shared list for everything your home needs. No more digging through chats.",
   "continueWithGoogle": "Continue with Google",
@@ -19,7 +17,6 @@
   "signOutConfirm": "Sign out of Lazim?",
   "demoModeBanner": "Demo mode — data stays on this device",
   "orDivider": "or",
-
   "familySetupTitle": "Set up your home",
   "familySetupSubtitle": "Create a family group, or join one with an invite code.",
   "createFamily": "Create a family",
@@ -33,7 +30,6 @@
   "joining": "Joining…",
   "creating": "Creating…",
   "inviteNotFound": "That invite code doesn't exist. Check it and try again.",
-
   "needsTitle": "Needs",
   "needsEmptyTitle": "Nothing needed right now",
   "needsEmptyBody": "Add the first thing your home needs. Groceries, medicine, a light bulb — anything.",
@@ -57,7 +53,6 @@
   "edit": "Edit",
   "done": "Done",
   "retry": "Try again",
-
   "statusOpen": "Needed",
   "statusClaimed": "Claimed",
   "statusPurchased": "Purchased",
@@ -67,14 +62,24 @@
   "claim": "I'll get it",
   "unclaim": "Release",
   "claimedBy": "Claimed by {name}",
-  "@claimedBy": { "placeholders": { "name": { "type": "String" } } },
+  "@claimedBy": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "addedBy": "Added by {name}",
-  "@addedBy": { "placeholders": { "name": { "type": "String" } } },
-
+  "@addedBy": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "priorityLow": "Low",
   "priorityNormal": "Normal",
   "priorityUrgent": "Urgent",
-
   "categoryGroceries": "Groceries",
   "categoryHousehold": "Household",
   "categoryPharmacy": "Pharmacy",
@@ -83,7 +88,6 @@
   "categoryKitchen": "Kitchen",
   "categoryElectronics": "Electronics",
   "categoryOther": "Other",
-
   "historyTitle": "History",
   "historyEmptyTitle": "No history yet",
   "historyEmptyBody": "Items you purchase or archive will show up here.",
@@ -97,10 +101,15 @@
   "clearFilters": "Clear all",
   "applyFilters": "Show results",
   "resultsCount": "{count} items",
-  "@resultsCount": { "placeholders": { "count": { "type": "int" } } },
+  "@resultsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "noResultsTitle": "No items match",
   "noResultsBody": "Try loosening the filters.",
-
   "itemDetailTitle": "Item",
   "attachmentsTitle": "Attachments",
   "addLink": "Add link",
@@ -111,27 +120,67 @@
   "noAttachments": "No attachments yet",
   "openAttachment": "Open",
   "removeAttachment": "Remove",
-  "attachmentAdded": "Attached {name}",
-  "@attachmentAdded": { "placeholders": { "name": { "type": "String" } } },
+  "attachmentAdded": "Attachment added",
+  "@attachmentAdded": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "uploading": "Uploading…",
-
   "activityCreated": "{name} added this",
-  "@activityCreated": { "placeholders": { "name": { "type": "String" } } },
+  "@activityCreated": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "activityStatusChanged": "{name} changed status from {from} to {to}",
   "@activityStatusChanged": {
-    "placeholders": { "name": { "type": "String" }, "from": { "type": "String" }, "to": { "type": "String" } }
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
   },
   "activityEdited": "{name} edited the item",
-  "@activityEdited": { "placeholders": { "name": { "type": "String" } } },
+  "@activityEdited": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "activityAssigned": "{name} assigned it to {to}",
   "@activityAssigned": {
-    "placeholders": { "name": { "type": "String" }, "to": { "type": "String" } }
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
   },
   "activityAttachment": "{name} attached {to}",
   "@activityAttachment": {
-    "placeholders": { "name": { "type": "String" }, "to": { "type": "String" } }
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
   },
-
   "settingsTitle": "Settings",
   "language": "Language",
   "languageArabic": "العربية",
@@ -144,26 +193,49 @@
   "linkCopied": "Code copied",
   "shareLink": "Share",
   "memberCount": "{count} members",
-  "@memberCount": { "placeholders": { "count": { "type": "int" } } },
+  "@memberCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "ownerBadge": "Owner",
   "removeMember": "Remove",
   "removeMemberConfirm": "Remove {name} from this family?",
-  "@removeMemberConfirm": { "placeholders": { "name": { "type": "String" } } },
+  "@removeMemberConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
   "notificationsSection": "Notifications",
   "notificationsEnabled": "Push notifications on",
   "notificationsDisabled": "Push notifications off",
   "enableNotifications": "Turn on notifications",
-
   "updatesSection": "App updates",
   "updateCurrentVersion": "Installed version",
   "checkForUpdates": "Check for updates",
   "checkingForUpdates": "Checking…",
   "upToDate": "You're on the latest version",
   "updateAvailable": "Version {version} is available",
-  "@updateAvailable": { "placeholders": { "version": { "type": "String" } } },
+  "@updateAvailable": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
   "updateDownload": "Download and install",
   "updateDownloading": "Downloading… {percent}%",
-  "@updateDownloading": { "placeholders": { "percent": { "type": "int" } } },
+  "@updateDownloading": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
   "updateInstall": "Install now",
   "updateInstalling": "Opening installer…",
   "updatePermissionTitle": "Allow installs",
@@ -177,44 +249,81 @@
   "updatesDisabled": "Update checks aren't configured in this build.",
   "aboutSection": "About",
   "version": "Version {version}",
-  "@version": { "placeholders": { "version": { "type": "String" } } },
-
+  "@version": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
   "notifNewItemTitle": "New item added",
   "notifNewItemBody": "{name} added \"{item}\"",
   "@notifNewItemBody": {
-    "placeholders": { "name": { "type": "String" }, "item": { "type": "String" } }
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "item": {
+        "type": "String"
+      }
+    }
   },
   "notifStatusTitle": "Item updated",
   "notifStatusBody": "{name} marked \"{item}\" as {status}",
   "@notifStatusBody": {
-    "placeholders": { "name": { "type": "String" }, "item": { "type": "String" }, "status": { "type": "String" } }
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "item": {
+        "type": "String"
+      },
+      "status": {
+        "type": "String"
+      }
+    }
   },
-
   "errorGeneric": "Something went wrong. Try again.",
   "errorNetwork": "No connection. Check your network.",
   "requiredField": "This is required",
   "invalidEmail": "Enter a valid email",
   "weakPassword": "Use at least 6 characters",
-
   "today": "Today",
   "yesterday": "Yesterday",
   "daysAgo": "{count}d ago",
-  "@daysAgo": { "placeholders": { "count": { "type": "int" } } },
+  "@daysAgo": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "quickAddHint": "Add an item…",
-
   "searchHint": "Search items…",
   "searchClear": "Clear search",
   "noSearchResults": "No matching items",
   "selectMode": "Select",
   "selectedCount": "{count} selected",
-  "@selectedCount": { "placeholders": { "count": { "type": "int" } } },
+  "@selectedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "selectAll": "Select all",
   "clearSelection": "Clear selection",
   "bulkMarkDone": "Mark done",
   "bulkDelete": "Delete",
   "bulkCancel": "Cancel",
   "bulkDeleteConfirm": "Delete {count} items?",
-  "@bulkDeleteConfirm": { "placeholders": { "count": { "type": "int" } } },
+  "@bulkDeleteConfirm": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "swipeShare": "Share",
   "swipeDelete": "Delete",
   "itemShared": "Item shared",
@@ -222,6 +331,39 @@
   "editNameTitle": "Display name",
   "editNameHint": "The name your family sees",
   "nameSaved": "Name saved",
-  "attachmentUploadFailed": "Could not upload the file. Check that Firebase Storage is enabled.",
-  "attachmentOpenFailed": "Could not open the file."
+  "attachmentUploadFailed": "Could not upload the file. Check your connection and try again.",
+  "attachmentOpenFailed": "Could not open the file.",
+  "categoriesTitle": "Categories",
+  "categoriesSubtitle": "Organise the home's needs with your own categories",
+  "manageCategories": "Manage categories",
+  "addCategory": "New category",
+  "editCategory": "Edit category",
+  "categoryNameLabel": "Category name",
+  "categoryNameHint": "e.g. Garden supplies",
+  "categoryIconLabel": "Icon",
+  "categoryAdded": "Category added",
+  "categoryRenamed": "Category updated",
+  "categoryDeleted": "Category deleted",
+  "categoryDeleteConfirm": "Delete \"{name}\"? Items keep their other categories.",
+  "@categoryDeleteConfirm": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "categoriesEmpty": "No custom categories yet",
+  "categoriesEmptyBody": "The default categories are ready to use. Add one of your own.",
+  "builtInCategories": "Default categories",
+  "customCategories": "Your categories",
+  "selectCategories": "Categories",
+  "categoriesHint": "You can pick more than one",
+  "addAttachment": "Add attachment",
+  "attachmentsHint": "Add photos, files or links",
+  "attachmentPreview": "Preview",
+  "imagePreviewTitle": "Image preview",
+  "attachmentTooLarge": "Files must be under 5 MB.",
+  "attachmentEmpty": "This file is empty.",
+  "notificationsCleared": "Notifications cleared",
+  "noCategoriesSelected": "No category"
 }

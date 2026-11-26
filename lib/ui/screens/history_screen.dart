@@ -199,6 +199,7 @@ class _FilterSheetState extends ConsumerState<_FilterSheet> {
     final l = AppL10n.of(context);
     final theme = Theme.of(context);
     final members = ref.watch(membersProvider).value ?? const <FamilyMember>[];
+    final categories = ref.watch(categoriesProvider);
     final dateFmt = DateFormat.yMMMd(l.localeName);
 
     return DraggableScrollableSheet(
@@ -265,15 +266,15 @@ class _FilterSheetState extends ConsumerState<_FilterSheet> {
                     child: Wrap(
                       spacing: 8,
                       runSpacing: 8,
-                      children: NeedCategory.values.map((c) {
-                        final sel = _draft.categories.contains(c);
+                      children: categories.map((c) {
+                        final sel = _draft.categories.contains(c.id);
                         return _Chip(
-                          label: c.label(l),
-                          icon: c.icon,
+                          label: categoryLabel(c, l),
+                          icon: categoryIconFor(c),
                           selected: sel,
                           onTap: () => setState(() {
                             final next = {..._draft.categories};
-                            sel ? next.remove(c) : next.add(c);
+                            sel ? next.remove(c.id) : next.add(c.id);
                             _draft = _draft.copyWith(categories: next);
                           }),
                         );

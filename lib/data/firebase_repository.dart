@@ -359,6 +359,55 @@ class FirebaseFamilyRepository implements FamilyRepository {
       );
 }
 
+class FirebaseCategoryRepository implements CategoryRepository {
+  FirebaseCategoryRepository(this._db);
+  final FirebaseFirestore _db;
+
+  CollectionReference<Map<String, dynamic>> _categories(String familyId) =>
+      _db.collection('families').doc(familyId).collection('categories');
+
+  @override
+  Stream<List<NeedCategoryDef>> watchCategories(String familyId) {
+    return _categories(familyId).snapshots().map((snap) {
+      final list = snap.docs
+          .map((d) => NeedCategoryDef.fromMap({...d.data(), 'id': d.id}))
+          .toList();
+      list.sort((a, b) => a.order.compareTo(b.order));
+      return list;
+    });
+  }
+
+  @override
+  Future<NeedCategoryDef> createCategory({
+    required String familyId,
+    required String name,
+    String? iconKey,
+    int? colorValue,
+  }) async {
+    final ref = _categories(familyId).doc();
+    final def = NeedCategoryDef(
+      id: ref.id,
+      name: name,
+      iconKey: iconKey ?? 'label',
+      colorValue: colorValue,
+      order: DateTime.now().millisecondsSinceEpoch,
+    );
+    await ref.set(def.toMap());
+    return def;
+  }
+
+  @override
+  Future<void> renameCategory(
+      String familyId, String categoryId, String name) async {
+    await _categories(familyId).doc(categoryId).update({'name': name});
+  }
+
+  @override
+  Future<void> deleteCategory(String familyId, String categoryId) async {
+    await _categories(familyId).doc(categoryId).delete();
+  }
+}
+
 class FirebaseNeedRepository implements NeedRepository {
   FirebaseNeedRepository(this._db);
   final FirebaseFirestore _db;
@@ -391,6 +440,7 @@ class FirebaseNeedRepository implements NeedRepository {
     String? unit,
     required NeedPriority priority,
     required NeedCategory category,
+    List<String>? categoryIds,
     String? assignedTo,
     String? assignedToName,
   }) async {
@@ -406,6 +456,9 @@ class FirebaseNeedRepository implements NeedRepository {
       status: NeedStatus.open,
       priority: priority,
       category: category,
+      categoryIds: (categoryIds == null || categoryIds.isEmpty)
+          ? [category.code]
+          : categoryIds,
       createdBy: actor.id,
       createdByName: actor.displayName,
       assignedTo: assignedTo,

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:share_plus/share_plus.dart' show SharePlus, ShareParams;
 
 import '../../core/config.dart';
+import '../../core/formatting.dart';
 import '../../core/providers.dart';
 import '../../core/theme.dart';
 import '../../core/update_controller.dart';
@@ -11,6 +12,7 @@ import '../../domain/enums.dart';
 import '../../domain/models.dart';
 import '../../l10n/app_localizations.dart';
 import '../widgets/common.dart';
+import '../widgets/category_picker.dart';
 import '../widgets/update_section.dart';
 
 /// Settings: language, family members, invite link, notifications, sign out.
@@ -346,6 +348,14 @@ class SettingsScreen extends ConsumerWidget {
             const SizedBox(height: 22),
           ],
 
+          SectionHeader(title: l.categoriesTitle),
+          _Card(
+            children: [
+              const _CategoryManager(),
+            ],
+          ),
+          const SizedBox(height: 22),
+
           SectionHeader(title: l.updatesSection),
           _Card(
             children: [
@@ -518,8 +528,175 @@ class SettingsScreen extends ConsumerWidget {
   }
 }
 
-class _Card extends StatelessWidget {
-  const _Card({required this.children});
+/// Category management: the built-ins are shown read-only (they are synthesised
+/// in code), and the family's own categories can be added, renamed and deleted.
+class _CategoryManager extends ConsumerWidget {
+  const _CategoryManager();
+
+  Future<void> _delete(
+    BuildContext context,
+    WidgetRef ref,
+    NeedCategoryDef def,
+  ) async {
+    final family = ref.read(activeFamilyProvider);
+    if (family == null) return;
+    final l = AppL10n.of(context);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        content: Text(l.categoryDeleteConfirm(def.name)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text(l.cancel)),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: LazimColors.danger,
+              minimumSize: const Size(80, 44),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(l.delete),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+    await ref.read(categoryRepositoryProvider).deleteCategory(family.id, def.id);
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(l.categoryDeleted)),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final l = AppL10n.of(context);
+    final custom = ref.watch(customCategoriesProvider).value ?? const <NeedCategoryDef>[];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+          child: Text(
+            l.categoriesSubtitle,
+            style: const TextStyle(
+              fontFamily: 'Cairo',
+              fontSize: 12.5,
+              color: LazimColors.muted,
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+          child: Text(
+            l.builtInCategories,
+            style: const TextStyle(
+              fontFamily: 'Cairo',
+              fontSize: 11.5,
+              fontWeight: FontWeight.w700,
+              color: LazimColors.muted,
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+          child: Wrap(
+            spacing: 7,
+            runSpacing: 7,
+            children: NeedCategoryDef.builtIns.map((c) {
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: LazimColors.muted.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(9),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(categoryIconFor(c), size: 13, color: LazimColors.muted),
+                    const SizedBox(width: 5),
+                    Text(
+                      categoryLabel(c, l),
+                      style: const TextStyle(
+                        fontFamily: 'Cairo',
+                        fontSize: 12,
+                        color: LazimColors.muted,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+        const Divider(height: 1),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
+          child: Text(
+            l.customCategories,
+            style: const TextStyle(
+              fontFamily: 'Cairo',
+              fontSize: 11.5,
+              fontWeight: FontWeight.w700,
+              color: LazimColors.muted,
+            ),
+          ),
+        ),
+        if (custom.isEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+            child: Text(
+              l.categoriesEmptyBody,
+              style: const TextStyle(
+                fontFamily: 'Cairo',
+                fontSize: 12.5,
+                color: LazimColors.muted,
+                height: 1.5,
+              ),
+            ),
+          )
+        else
+          ...custom.map((c) => ListTile(
+                leading: Icon(categoryIconFor(c), size: 20),
+                title: Text(
+                  categoryLabel(c, l),
+                  style: const TextStyle(
+                    fontFamily: 'Cairo',
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined, size: 19),
+                      tooltip: l.edit,
+                      onPressed: () => showCategoryDialog(context, ref, existing: c),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline_rounded, size: 19),
+                      color: LazimColors.danger,
+                      tooltip: l.delete,
+                      onPressed: () => _delete(context, ref, c),
+                    ),
+                  ],
+                ),
+              )),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
+          child: TextButton.icon(
+            onPressed: () => showCategoryDialog(context, ref),
+            icon: const Icon(Icons.add_rounded, size: 19),
+            label: Text(l.addCategory),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _Card extends StatelessWidget {  const _Card({required this.children});
   final List<Widget> children;
 
   @override

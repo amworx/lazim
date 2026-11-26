@@ -694,7 +694,7 @@ abstract class AppL10n {
   /// No description provided for @attachmentAdded.
   ///
   /// In en, this message translates to:
-  /// **'Attached {name}'**
+  /// **'Attachment added'**
   String attachmentAdded(String name);
 
   /// No description provided for @uploading.
@@ -1162,7 +1162,7 @@ abstract class AppL10n {
   /// No description provided for @attachmentUploadFailed.
   ///
   /// In en, this message translates to:
-  /// **'Could not upload the file. Check that Firebase Storage is enabled.'**
+  /// **'Could not upload the file. Check your connection and try again.'**
   String get attachmentUploadFailed;
 
   /// No description provided for @attachmentOpenFailed.
@@ -1170,6 +1170,162 @@ abstract class AppL10n {
   /// In en, this message translates to:
   /// **'Could not open the file.'**
   String get attachmentOpenFailed;
+
+  /// No description provided for @categoriesTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Categories'**
+  String get categoriesTitle;
+
+  /// No description provided for @categoriesSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Organise the home\'s needs with your own categories'**
+  String get categoriesSubtitle;
+
+  /// No description provided for @manageCategories.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage categories'**
+  String get manageCategories;
+
+  /// No description provided for @addCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'New category'**
+  String get addCategory;
+
+  /// No description provided for @editCategory.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit category'**
+  String get editCategory;
+
+  /// No description provided for @categoryNameLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Category name'**
+  String get categoryNameLabel;
+
+  /// No description provided for @categoryNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Garden supplies'**
+  String get categoryNameHint;
+
+  /// No description provided for @categoryIconLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Icon'**
+  String get categoryIconLabel;
+
+  /// No description provided for @categoryAdded.
+  ///
+  /// In en, this message translates to:
+  /// **'Category added'**
+  String get categoryAdded;
+
+  /// No description provided for @categoryRenamed.
+  ///
+  /// In en, this message translates to:
+  /// **'Category updated'**
+  String get categoryRenamed;
+
+  /// No description provided for @categoryDeleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Category deleted'**
+  String get categoryDeleted;
+
+  /// No description provided for @categoryDeleteConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete \"{name}\"? Items keep their other categories.'**
+  String categoryDeleteConfirm(String name);
+
+  /// No description provided for @categoriesEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No custom categories yet'**
+  String get categoriesEmpty;
+
+  /// No description provided for @categoriesEmptyBody.
+  ///
+  /// In en, this message translates to:
+  /// **'The default categories are ready to use. Add one of your own.'**
+  String get categoriesEmptyBody;
+
+  /// No description provided for @builtInCategories.
+  ///
+  /// In en, this message translates to:
+  /// **'Default categories'**
+  String get builtInCategories;
+
+  /// No description provided for @customCategories.
+  ///
+  /// In en, this message translates to:
+  /// **'Your categories'**
+  String get customCategories;
+
+  /// No description provided for @selectCategories.
+  ///
+  /// In en, this message translates to:
+  /// **'Categories'**
+  String get selectCategories;
+
+  /// No description provided for @categoriesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'You can pick more than one'**
+  String get categoriesHint;
+
+  /// No description provided for @addAttachment.
+  ///
+  /// In en, this message translates to:
+  /// **'Add attachment'**
+  String get addAttachment;
+
+  /// No description provided for @attachmentsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Add photos, files or links'**
+  String get attachmentsHint;
+
+  /// No description provided for @attachmentPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview'**
+  String get attachmentPreview;
+
+  /// No description provided for @imagePreviewTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Image preview'**
+  String get imagePreviewTitle;
+
+  /// No description provided for @attachmentTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'Files must be under 5 MB.'**
+  String get attachmentTooLarge;
+
+  /// No description provided for @attachmentEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'This file is empty.'**
+  String get attachmentEmpty;
+
+  /// No description provided for @notificationsCleared.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications cleared'**
+  String get notificationsCleared;
+
+  /// No description provided for @noCategoriesSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'No category'**
+  String get noCategoriesSelected;
 }
 
 class _AppL10nDelegate extends LocalizationsDelegate<AppL10n> {

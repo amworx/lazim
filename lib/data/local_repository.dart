@@ -25,11 +25,13 @@ class LocalStore {
   final _families = StreamController<List<Family>>.broadcast();
   final _members = StreamController<Map<String, List<FamilyMember>>>.broadcast();
   final _needs = StreamController<Map<String, List<NeedItem>>>.broadcast();
+  final _categories = StreamController<Map<String, List<NeedCategoryDef>>>.broadcast();
 
   AppUser? _user;
   final Map<String, Family> _familyById = {};
   final Map<String, List<FamilyMember>> _membersByFamily = {};
   final Map<String, List<NeedItem>> _needsByFamily = {};
+  final Map<String, List<NeedCategoryDef>> _categoriesByFamily = {};
   final Map<String, String> _inviteToFamily = {};
 
   bool _seeded = false;
@@ -308,6 +310,70 @@ class LocalStore {
     _emitAll();
   }
 
+  // ---- categories ----
+
+  List<NeedCategoryDef> _categoryList(String familyId) =>
+      _categoriesByFamily.putIfAbsent(familyId, () => <NeedCategoryDef>[]);
+
+  Stream<List<NeedCategoryDef>> categoriesStream(String familyId) async* {
+    List<NeedCategoryDef> sorted() {
+      final list = List<NeedCategoryDef>.from(_categoryList(familyId));
+      list.sort((a, b) => a.order.compareTo(b.order));
+      return list;
+    }
+
+    yield sorted();
+    yield* _categories.stream.map((m) {
+      final list = List<NeedCategoryDef>.from(m[familyId] ?? const []);
+      list.sort((a, b) => a.order.compareTo(b.order));
+      return list;
+    });
+  }
+
+  Future<NeedCategoryDef> createCategory({
+    required String familyId,
+    required String name,
+    String? iconKey,
+    int? colorValue,
+  }) async {
+    final def = NeedCategoryDef(
+      id: _uuid.v4(),
+      name: name,
+      iconKey: iconKey ?? 'label',
+      colorValue: colorValue,
+      order: DateTime.now().millisecondsSinceEpoch,
+    );
+    _categoryList(familyId).add(def);
+    _emitCategories();
+    return def;
+  }
+
+  Future<void> renameCategory(String familyId, String categoryId, String name) async {
+    final list = _categoryList(familyId);
+    final i = list.indexWhere((c) => c.id == categoryId);
+    if (i < 0) return;
+    list[i] = NeedCategoryDef(
+      id: list[i].id,
+      name: name,
+      iconKey: list[i].iconKey,
+      colorValue: list[i].colorValue,
+      order: list[i].order,
+    );
+    _emitCategories();
+  }
+
+  Future<void> deleteCategory(String familyId, String categoryId) async {
+    _categoryList(familyId).removeWhere((c) => c.id == categoryId);
+    _emitCategories();
+  }
+
+  void _emitCategories() {
+    _categories.add({
+      for (final e in _categoriesByFamily.entries)
+        e.key: List<NeedCategoryDef>.from(e.value),
+    });
+  }
+
   // ---- needs ----
 
   Stream<List<NeedItem>> needsStream(String familyId) async* {
@@ -355,6 +421,7 @@ class LocalStore {
     String? unit,
     required NeedPriority priority,
     required NeedCategory category,
+    List<String>? categoryIds,
     String? assignedTo,
     String? assignedToName,
   }) async {
@@ -369,6 +436,9 @@ class LocalStore {
       status: NeedStatus.open,
       priority: priority,
       category: category,
+      categoryIds: (categoryIds == null || categoryIds.isEmpty)
+          ? [category.code]
+          : categoryIds,
       createdBy: actor.id,
       createdByName: actor.displayName,
       assignedTo: assignedTo,
@@ -618,6 +688,7 @@ class LocalNeedRepository implements NeedRepository {
     String? unit,
     required NeedPriority priority,
     required NeedCategory category,
+    List<String>? categoryIds,
     String? assignedTo,
     String? assignedToName,
   }) =>
@@ -630,6 +701,7 @@ class LocalNeedRepository implements NeedRepository {
         unit: unit,
         priority: priority,
         category: category,
+        categoryIds: categoryIds,
         assignedTo: assignedTo,
         assignedToName: assignedToName,
       );
@@ -697,8 +769,38 @@ class LocalNeedRepository implements NeedRepository {
       _store.removeAttachment(item, attachment);
 }
 
-class LocalPreferencesRepository implements PreferencesRepository {
-  LocalPreferencesRepository(this._prefs);
+class LocalCategoryRepository implements CategoryRepository {
+  LocalCategoryRepository(this._store);
+  final LocalStore _store;
+
+  @override
+  Stream<List<NeedCategoryDef>> watchCategories(String familyId) =>
+      _store.categoriesStream(familyId);
+
+  @override
+  Future<NeedCategoryDef> createCategory({
+    required String familyId,
+    required String name,
+    String? iconKey,
+    int? colorValue,
+  }) =>
+      _store.createCategory(
+        familyId: familyId,
+        name: name,
+        iconKey: iconKey,
+        colorValue: colorValue,
+      );
+
+  @override
+  Future<void> renameCategory(String familyId, String categoryId, String name) =>
+      _store.renameCategory(familyId, categoryId, name);
+
+  @override
+  Future<void> deleteCategory(String familyId, String categoryId) =>
+      _store.deleteCategory(familyId, categoryId);
+}
+
+class LocalPreferencesRepository implements PreferencesRepository {  LocalPreferencesRepository(this._prefs);
   final SharedPreferences _prefs;
 
   @override

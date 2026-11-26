@@ -177,6 +177,7 @@ class _NeedsListScreenState extends ConsumerState<NeedsListScreen> {
     final active = ref.watch(activeNeedsProvider);
     final family = ref.watch(activeFamilyProvider);
     final stats = ref.watch(needStatsProvider);
+    final categoryById = ref.watch(categoryByIdProvider);
 
     final visible = _query.isEmpty
         ? active
@@ -184,7 +185,10 @@ class _NeedsListScreenState extends ConsumerState<NeedsListScreen> {
             .where((n) =>
                 n.title.toLowerCase().contains(_query) ||
                 (n.note ?? '').toLowerCase().contains(_query) ||
-                n.category.label(l).toLowerCase().contains(_query))
+                n.effectiveCategoryIds.any((id) =>
+                    categoryLabel(categoryById(id), l)
+                        .toLowerCase()
+                        .contains(_query)))
             .toList();
 
     final selectedItems = active.where((n) => _selected.contains(n.id)).toList();
@@ -291,11 +295,13 @@ class _NeedsListScreenState extends ConsumerState<NeedsListScreen> {
                             color: LazimColors.clay,
                             icon: Icons.share_rounded,
                             label: l.swipeShare,
+                            fromStart: true,
                           ),
                           secondaryBackground: _SwipeBackground(
                             color: Theme.of(context).colorScheme.error,
                             icon: Icons.delete_outline_rounded,
                             label: l.swipeDelete,
+                            fromStart: false,
                           ),
                           confirmDismiss: (direction) async {
                             // `background` (share) is shown for startToEnd;
@@ -354,26 +360,55 @@ class _SwipeBackground extends StatelessWidget {
     required this.color,
     required this.icon,
     required this.label,
+    required this.fromStart,
   });
 
   final Color color;
   final IconData icon;
   final String label;
 
+  /// True when this background is revealed by dragging from the start edge.
+  /// The action sits on the edge the finger comes from, so a short swipe is
+  /// already enough to read what it does instead of needing a full drag.
+  final bool fromStart;
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: color,
-      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      alignment: fromStart ? Alignment.centerLeft : Alignment.centerRight,
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, color: Colors.white),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: const TextStyle(color: Colors.white, fontFamily: 'Cairo'),
-          ),
+          if (fromStart) ...[
+            Icon(icon, color: Colors.white, size: 22),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontFamily: 'Cairo',
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+              ),
+            ),
+          ] else ...[
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontFamily: 'Cairo',
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Icon(icon, color: Colors.white, size: 22),
+          ],
         ],
       ),
     );

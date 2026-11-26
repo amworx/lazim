@@ -319,7 +319,7 @@ class AppL10nEn extends AppL10n {
 
   @override
   String attachmentAdded(String name) {
-    return 'Attached $name';
+    return 'Attachment added';
   }
 
   @override
@@ -592,8 +592,90 @@ class AppL10nEn extends AppL10n {
 
   @override
   String get attachmentUploadFailed =>
-      'Could not upload the file. Check that Firebase Storage is enabled.';
+      'Could not upload the file. Check your connection and try again.';
 
   @override
   String get attachmentOpenFailed => 'Could not open the file.';
+
+  @override
+  String get categoriesTitle => 'Categories';
+
+  @override
+  String get categoriesSubtitle =>
+      'Organise the home\'s needs with your own categories';
+
+  @override
+  String get manageCategories => 'Manage categories';
+
+  @override
+  String get addCategory => 'New category';
+
+  @override
+  String get editCategory => 'Edit category';
+
+  @override
+  String get categoryNameLabel => 'Category name';
+
+  @override
+  String get categoryNameHint => 'e.g. Garden supplies';
+
+  @override
+  String get categoryIconLabel => 'Icon';
+
+  @override
+  String get categoryAdded => 'Category added';
+
+  @override
+  String get categoryRenamed => 'Category updated';
+
+  @override
+  String get categoryDeleted => 'Category deleted';
+
+  @override
+  String categoryDeleteConfirm(String name) {
+    return 'Delete \"$name\"? Items keep their other categories.';
+  }
+
+  @override
+  String get categoriesEmpty => 'No custom categories yet';
+
+  @override
+  String get categoriesEmptyBody =>
+      'The default categories are ready to use. Add one of your own.';
+
+  @override
+  String get builtInCategories => 'Default categories';
+
+  @override
+  String get customCategories => 'Your categories';
+
+  @override
+  String get selectCategories => 'Categories';
+
+  @override
+  String get categoriesHint => 'You can pick more than one';
+
+  @override
+  String get addAttachment => 'Add attachment';
+
+  @override
+  String get attachmentsHint => 'Add photos, files or links';
+
+  @override
+  String get attachmentPreview => 'Preview';
+
+  @override
+  String get imagePreviewTitle => 'Image preview';
+
+  @override
+  String get attachmentTooLarge => 'Files must be under 5 MB.';
+
+  @override
+  String get attachmentEmpty => 'This file is empty.';
+
+  @override
+  String get notificationsCleared => 'Notifications cleared';
+
+  @override
+  String get noCategoriesSelected => 'No category';
 }
