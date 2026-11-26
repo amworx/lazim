@@ -306,8 +306,11 @@ Things deliberately left for the next pass, so they are not mistaken for finishe
 - **No account deletion flow.** Required by Play Store policy before release.
 - **iOS is scaffolded but unconfigured.** Needs the iOS Firebase app, an APNs key,
   and `GoogleService-Info.plist`.
-- **Release signing uses debug keys.** Replace before any store upload.
-- **No app icon or splash.** Default Flutter assets are still in place.
+- **Firebase Storage is not provisioned.** `firebase/storage.rules` is written
+  but the `lazim-51935` bucket does not exist, so file uploads fail. Enable
+  Storage once in the Firebase console, then deploy the rules with
+  `npx firebase-tools deploy --only storage --project lazim-51935`. Links work
+  without it.
 - **Self-update is sideload-only.** The in-app updater installs an APK from a
   manifest URL. That is right for direct distribution, but Google Play policy
   forbids an app updating itself, so a Play build must ship with
@@ -319,15 +322,11 @@ Things deliberately left for the next pass, so they are not mistaken for finishe
 ## In-app updates
 
 The app can check for, download, and install its own updates without a store.
-It is off by default: `AppConfig.updateManifestUrl` is empty, and an empty URL
-means no network call, no timer, and no UI.
-
-**Turn it on** by passing the manifest URL at build time:
-
-```
-flutter build apk --release \
-  --dart-define=LAZIM_UPDATE_MANIFEST=https://your-host.example/lazim/update.json
-```
+It is **on by default**: `AppConfig.updateManifestUrl` points at
+`update_manifest.json` in this repo, served over HTTPS from raw.githubusercontent.com.
+Every release must update that file's `version`, `buildNumber` and `apkUrl`, or
+installed builds will not see the new version. Pass an empty string for
+`LAZIM_UPDATE_MANIFEST` to disable checks entirely.
 
 **The manifest** is a small JSON file you host anywhere over HTTPS:
 
